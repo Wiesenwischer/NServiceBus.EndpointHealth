@@ -34,14 +34,16 @@ public class EndpointHealthFeature : Feature
 
 #if NET9_0_OR_GREATER
         // NServiceBus 8.x uses Microsoft.Extensions.DependencyInjection
+        // Health state is automatically shared via DI
         context.Services.AddSingleton(options);
         context.Services.AddSingleton<IEndpointHealthState, EndpointHealthState>();
 
         context.RegisterStartupTask(provider =>
             new HealthPingStartupTask(provider.GetRequiredService<IEndpointHealthState>()));
 #else
-        // NServiceBus 7.x uses internal container
-        var state = new EndpointHealthState();
+        // NServiceBus 7.x uses internal container separate from ASP.NET Core DI
+        // External state is required and provided via EnableEndpointHealth(healthState, ...)
+        var state = context.Settings.Get<IEndpointHealthState>(EndpointHealthConfigurationExtensions.ExternalHealthStateKey);
         context.Container.RegisterSingleton(options);
         context.Container.RegisterSingleton<IEndpointHealthState>(state);
 

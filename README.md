@@ -66,7 +66,10 @@ endpointConfig.EnableEndpointHealth(options =>
 
 ## 🌐 4. Verwendung – ASP.NET Core Health Checks
 
-In `Program.cs`:
+### NServiceBus 8.x (.NET 9+)
+
+Bei NServiceBus 8.x wird `Microsoft.Extensions.DependencyInjection` verwendet.
+Die Services werden automatisch registriert:
 
 ```csharp
 builder.Services
@@ -76,6 +79,39 @@ builder.Services
 var app = builder.Build();
 app.MapHealthChecks("/health");
 app.Run();
+```
+
+### NServiceBus 7.x (.NET Core 3.1)
+
+Bei NServiceBus 7.x verwendet NServiceBus einen internen Container, der vom ASP.NET Core DI Container getrennt ist.
+Daher muss der `EndpointHealthState` manuell im ASP.NET Core Container registriert werden:
+
+```csharp
+public void ConfigureServices(IServiceCollection services)
+{
+    // Manuell EndpointHealthState erstellen und registrieren
+    var endpointHealthState = new EndpointHealthState();
+    services.AddSingleton<IEndpointHealthState>(endpointHealthState);
+
+    // Optional: Referenz für CriticalError Handler speichern
+    Program.EndpointHealthState = endpointHealthState;
+
+    services
+        .AddHealthChecks()
+        .AddNServiceBusEndpointHealth();
+}
+```
+
+Im CriticalError Handler kann der State verwendet werden:
+
+```csharp
+private static async Task OnCriticalError(ICriticalErrorContext context)
+{
+    await context.Stop().ConfigureAwait(false);
+
+    // CriticalError im Health State registrieren
+    EndpointHealthState?.RegisterCriticalError(context.Error, context.Exception);
+}
 ```
 
 **HealthCheck liefert z. B.:**
