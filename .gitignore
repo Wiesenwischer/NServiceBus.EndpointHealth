@@ -1,0 +1,57 @@
+# Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio
+.vs/
+*.user
+*.userosscache
+*.sln.docstates
+*.suo
+*.cache
+
+# User-specific files
+*.rsuser
+*.userprefs
+
+# Build artifacts
+artifacts/
+publish/
+
+# NuGet
+*.nupkg
+*.snupkg
+.nuget/
+packages/
+project.lock.json
+project.fragment.lock.json
+
+# JetBrains Rider
+.idea/
+*.sln.iml
+
+# Test results
+TestResults/
+coverage/
+*.coverage
+*.coveragexml
+
+# dotnet tool
+.config/
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Learning Transport storage
+.learningtransport/
