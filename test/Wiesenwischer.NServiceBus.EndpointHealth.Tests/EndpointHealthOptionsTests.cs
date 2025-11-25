@@ -15,13 +15,13 @@ public class EndpointHealthOptionsTests
     }
 
     [Fact]
-    public void DefaultUnhealthyAfter_Is2Minutes()
+    public void DefaultUnhealthyAfter_Is3Minutes()
     {
         // Arrange & Act
         var options = new EndpointHealthOptions();
 
         // Assert
-        options.UnhealthyAfter.Should().Be(TimeSpan.FromMinutes(2));
+        options.UnhealthyAfter.Should().Be(TimeSpan.FromMinutes(3));
     }
 
     [Fact]
