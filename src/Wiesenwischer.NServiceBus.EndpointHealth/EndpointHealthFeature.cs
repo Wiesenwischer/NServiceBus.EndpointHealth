@@ -1,4 +1,6 @@
+#if NET9_0_OR_GREATER
 using Microsoft.Extensions.DependencyInjection;
+#endif
 using NServiceBus;
 using NServiceBus.Features;
 
@@ -30,11 +32,21 @@ public class EndpointHealthFeature : Feature
     {
         var options = context.Settings.Get<EndpointHealthOptions>();
 
+#if NET9_0_OR_GREATER
+        // NServiceBus 8.x uses Microsoft.Extensions.DependencyInjection
         context.Services.AddSingleton(options);
         context.Services.AddSingleton<IEndpointHealthState, EndpointHealthState>();
 
         context.RegisterStartupTask(provider =>
             new HealthPingStartupTask(provider.GetRequiredService<IEndpointHealthState>()));
+#else
+        // NServiceBus 7.x uses internal container
+        var state = new EndpointHealthState();
+        context.Container.RegisterSingleton(options);
+        context.Container.RegisterSingleton<IEndpointHealthState>(state);
+
+        context.RegisterStartupTask(new HealthPingStartupTask(state));
+#endif
     }
 }
 
@@ -50,6 +62,7 @@ internal class HealthPingStartupTask : FeatureStartupTask
         _state = state;
     }
 
+#if NET9_0_OR_GREATER
     protected override Task OnStart(IMessageSession session, CancellationToken cancellationToken = default)
     {
         // Register initial state so we're healthy from the start
@@ -65,4 +78,21 @@ internal class HealthPingStartupTask : FeatureStartupTask
     {
         return Task.CompletedTask;
     }
+#else
+    protected override Task OnStart(IMessageSession session)
+    {
+        // Register initial state so we're healthy from the start
+        _state.RegisterHealthPingProcessed();
+
+        var sendOptions = new SendOptions();
+        sendOptions.RouteToThisEndpoint();
+
+        return session.Send(new HealthPing(), sendOptions);
+    }
+
+    protected override Task OnStop(IMessageSession session)
+    {
+        return Task.CompletedTask;
+    }
+#endif
 }

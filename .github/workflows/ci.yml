@@ -77,7 +77,7 @@ jobs:
       continue-on-error: true
 
     - name: Pack NuGet packages
-      run: dotnet pack --no-build --configuration Release /p:PackageVersion=${{ needs.versioning.outputs.nuGetVersionV2 }} --output ./artifacts
+      run: dotnet pack --no-build --configuration Release /p:PackageVersion=${{ needs.versioning.outputs.semVer }} --output ./artifacts
 
     - name: Upload NuGet artifacts
       uses: actions/upload-artifact@v4
@@ -152,8 +152,8 @@ jobs:
 
           ### Installation
           ```bash
-          dotnet add package Wiesenwischer.NServiceBus.EndpointHealth --version ${{ needs.versioning.outputs.nuGetVersionV2 }}
-          dotnet add package Wiesenwischer.NServiceBus.EndpointHealth.AspNetCore --version ${{ needs.versioning.outputs.nuGetVersionV2 }}
+          dotnet add package Wiesenwischer.NServiceBus.EndpointHealth --version ${{ needs.versioning.outputs.semVer }}
+          dotnet add package Wiesenwischer.NServiceBus.EndpointHealth.AspNetCore --version ${{ needs.versioning.outputs.semVer }}
           ```
         draft: false
         prerelease: ${{ contains(needs.versioning.outputs.semVer, '-') }}
