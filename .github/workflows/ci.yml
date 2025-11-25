@@ -3,10 +3,9 @@ name: CI
 on:
   push:
     branches: [ main ]
+    tags: [ 'v*.*.*' ]
   pull_request:
     branches: [ main ]
-  release:
-    types: [ published ]
 
 env:
   DOTNET_VERSION: '9.0.x'
@@ -23,6 +22,7 @@ jobs:
       assemblySemVer: ${{ steps.gitversion.outputs.assemblySemVer }}
       assemblySemFileVer: ${{ steps.gitversion.outputs.assemblySemFileVer }}
       informationalVersion: ${{ steps.gitversion.outputs.informationalVersion }}
+      isTag: ${{ startsWith(github.ref, 'refs/tags/') }}
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -45,6 +45,7 @@ jobs:
       run: |
         echo "SemVer: ${{ steps.gitversion.outputs.semVer }}"
         echo "NuGetVersionV2: ${{ steps.gitversion.outputs.nuGetVersionV2 }}"
+        echo "Is Tag: ${{ startsWith(github.ref, 'refs/tags/') }}"
 
   build:
     runs-on: ubuntu-latest
@@ -78,11 +79,13 @@ jobs:
     - name: Pack NuGet packages
       run: dotnet pack --no-build --configuration Release /p:PackageVersion=${{ needs.versioning.outputs.nuGetVersionV2 }} --output ./artifacts
 
-    - name: Upload artifacts
+    - name: Upload NuGet artifacts
       uses: actions/upload-artifact@v4
       with:
         name: nuget-packages
-        path: ./artifacts/*.nupkg
+        path: |
+          ./artifacts/*.nupkg
+          ./artifacts/*.snupkg
 
   integration-tests:
     runs-on: ubuntu-latest
@@ -122,10 +125,44 @@ jobs:
       env:
         ConnectionStrings__SqlServer: "Server=localhost,1433;Database=NServiceBusTest;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True"
 
-  publish:
+  release:
     runs-on: ubuntu-latest
     needs: [versioning, build, integration-tests]
-    if: github.event_name == 'release'
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+
+    steps:
+    - name: Download artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: nuget-packages
+        path: ./artifacts
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        name: Release ${{ needs.versioning.outputs.semVer }}
+        body: |
+          ## NServiceBus EndpointHealth v${{ needs.versioning.outputs.semVer }}
+
+          ### Packages
+          - `Wiesenwischer.NServiceBus.EndpointHealth` - Core health monitoring
+          - `Wiesenwischer.NServiceBus.EndpointHealth.AspNetCore` - ASP.NET Core integration
+
+          ### Installation
+          ```bash
+          dotnet add package Wiesenwischer.NServiceBus.EndpointHealth --version ${{ needs.versioning.outputs.nuGetVersionV2 }}
+          dotnet add package Wiesenwischer.NServiceBus.EndpointHealth.AspNetCore --version ${{ needs.versioning.outputs.nuGetVersionV2 }}
+          ```
+        draft: false
+        prerelease: ${{ contains(needs.versioning.outputs.semVer, '-') }}
+        files: ./artifacts/*
+
+  publish:
+    runs-on: ubuntu-latest
+    needs: [versioning, build, integration-tests, release]
+    if: startsWith(github.ref, 'refs/tags/v')
 
     steps:
     - name: Download artifacts
