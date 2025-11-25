@@ -5,19 +5,29 @@ on:
     branches: [main]
     paths:
       - 'docs/**'
+  workflow_dispatch:  # Allow manual trigger
 
 jobs:
   sync-wiki:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Sync docs to wiki
-        uses: newrelic/wiki-sync-action@main
+      - name: Checkout wiki
+        uses: actions/checkout@v4
         with:
-          source: docs
-          destination: wiki
-          token: ${{ secrets.GITHUB_TOKEN }}
-          gitAuthorName: 'GitHub Actions'
-          gitAuthorEmail: 'actions@github.com'
+          repository: ${{ github.repository }}.wiki
+          path: wiki
+
+      - name: Sync docs to wiki
+        run: |
+          cp docs/*.md wiki/
+          cd wiki
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add .
+          git diff --staged --quiet || git commit -m "Sync wiki from docs folder"
+          git push
