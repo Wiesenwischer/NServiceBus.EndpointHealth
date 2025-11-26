@@ -145,7 +145,8 @@ app.MapHealthChecks("/health", new HealthCheckOptions
                 name = e.Key,
                 status = e.Value.Status.ToString(),
                 description = e.Value.Description,
-                duration = e.Value.Duration.TotalMilliseconds
+                duration = e.Value.Duration.TotalMilliseconds,
+                data = e.Value.Data // Include health check data properties
             }),
             totalDuration = report.TotalDuration.TotalMilliseconds
         };
@@ -165,12 +166,32 @@ Example response:
       "name": "nservicebus-endpoint",
       "status": "Healthy",
       "description": "Last health ping: 5s ago",
-      "duration": 0.5
+      "duration": 0.5,
+      "data": {
+        "transportKey": "primary-sql",
+        "lastHealthPingProcessedUtc": "2025-01-15T10:30:00.0000000Z",
+        "timeSinceLastPing": "00:00:05",
+        "unhealthyAfter": "00:03:00",
+        "hasCriticalError": false
+      }
     }
   ],
   "totalDuration": 1.2
 }
 ```
+
+### Available Data Properties
+
+The NServiceBus health check provides the following data properties (see [API Reference](API-Reference.md#data-properties) for details):
+
+| Key | Description |
+|-----|-------------|
+| `transportKey` | Logical transport cluster identifier |
+| `lastHealthPingProcessedUtc` | ISO 8601 timestamp of last ping |
+| `timeSinceLastPing` | Time since last ping |
+| `unhealthyAfter` | Configured threshold |
+| `hasCriticalError` | Critical error flag |
+| `criticalErrorMessage` | Error details (if any) |
 
 ## UI Dashboard Integration
 
