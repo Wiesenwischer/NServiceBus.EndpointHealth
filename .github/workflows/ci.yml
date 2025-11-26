@@ -181,22 +181,27 @@ jobs:
         name: nuget-packages
         path: ./artifacts
 
+    - name: Checkout for changelog
+      uses: actions/checkout@v4
+
+    - name: Extract changelog for version
+      id: changelog
+      run: |
+        # Extract the section for this version from CHANGELOG.md
+        VERSION="${{ needs.build.outputs.semVer }}"
+        # Get content between version headers, or use default message
+        NOTES=$(sed -n "/## \[${VERSION}\]/,/## \[/p" CHANGELOG.md | sed '$d' | tail -n +2) || true
+        if [ -z "$NOTES" ]; then
+          NOTES="See [CHANGELOG.md](https://github.com/Wiesenwischer/NServiceBus.EndpointHealth/blob/main/CHANGELOG.md) for details."
+        fi
+        # Write to file to preserve newlines
+        echo "$NOTES" > release-notes.md
+
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
       with:
-        name: Release ${{ needs.build.outputs.semVer }}
-        body: |
-          ## NServiceBus EndpointHealth v${{ needs.build.outputs.semVer }}
-
-          ### Packages
-          - `Wiesenwischer.NServiceBus.EndpointHealth` - Core health monitoring
-          - `Wiesenwischer.NServiceBus.EndpointHealth.AspNetCore` - ASP.NET Core integration
-
-          ### Installation
-          ```bash
-          dotnet add package Wiesenwischer.NServiceBus.EndpointHealth --version ${{ needs.build.outputs.semVer }}
-          dotnet add package Wiesenwischer.NServiceBus.EndpointHealth.AspNetCore --version ${{ needs.build.outputs.semVer }}
-          ```
+        name: v${{ needs.build.outputs.semVer }}
+        body_path: release-notes.md
         draft: false
         prerelease: ${{ contains(needs.build.outputs.semVer, '-') }}
         files: ./artifacts/*
