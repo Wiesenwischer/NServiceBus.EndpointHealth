@@ -22,21 +22,26 @@ public static class EndpointHealthConfigurationExtensions
     /// This allows configuration values to be overridden programmatically when needed.
     /// </para>
     /// <para>
+    /// For NServiceBus 7.x, you must set <see cref="EndpointHealthOptions.HealthState"/>
+    /// in the configure callback to share the health state with ASP.NET Core DI.
+    /// </para>
+    /// <para>
     /// Example usage:
     /// <code>
-    /// // Configuration only
+    /// // NServiceBus 8.x (NET9+): Configuration only
     /// endpointConfiguration.ConfigureEndpointHealth(configuration);
     ///
-    /// // Configuration with programmatic override
+    /// // NServiceBus 7.x: Must provide health state
+    /// var healthState = new EndpointHealthState();
+    /// services.AddSingleton&lt;IEndpointHealthState&gt;(healthState);
+    ///
     /// endpointConfiguration.ConfigureEndpointHealth(configuration, options =>
     /// {
-    ///     if (string.IsNullOrWhiteSpace(options.TransportKey))
-    ///         options.TransportKey = "default-transport";
+    ///     options.HealthState = healthState;
     /// });
     /// </code>
     /// </para>
     /// </remarks>
-#if NET9_0_OR_GREATER
     public static EndpointConfiguration ConfigureEndpointHealth(
         this EndpointConfiguration endpointConfiguration,
         IConfiguration configuration,
@@ -49,19 +54,4 @@ public static class EndpointHealthConfigurationExtensions
             configure?.Invoke(options);
         });
     }
-#else
-    public static EndpointConfiguration ConfigureEndpointHealth(
-        this EndpointConfiguration endpointConfiguration,
-        IEndpointHealthState healthState,
-        IConfiguration configuration,
-        Action<EndpointHealthOptions>? configure = null,
-        string sectionName = "EndpointHealth")
-    {
-        return endpointConfiguration.EnableEndpointHealth(healthState, options =>
-        {
-            options.FromConfiguration(configuration, sectionName);
-            configure?.Invoke(options);
-        });
-    }
-#endif
 }

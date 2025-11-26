@@ -71,6 +71,7 @@ public class EndpointHealthOptions
 | `TransportKey` | `string?` | `null` | Logical transport cluster identifier |
 | `PingInterval` | `TimeSpan` | 60s | Interval between health pings |
 | `UnhealthyAfter` | `TimeSpan` | 3min | Time without ping before unhealthy |
+| `HealthState` | `IEndpointHealthState?` | `null` | External health state instance (required for NServiceBus 7.x)
 
 ---
 

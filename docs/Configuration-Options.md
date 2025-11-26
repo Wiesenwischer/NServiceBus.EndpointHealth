@@ -13,6 +13,7 @@ The `EndpointHealthOptions` class provides configuration for the health monitori
 | `TransportKey` | `string?` | `null` | Optional logical key for transport cluster grouping |
 | `PingInterval` | `TimeSpan` | 60 seconds | How often health ping messages are sent |
 | `UnhealthyAfter` | `TimeSpan` | 3 minutes | Time after last ping before marking as unhealthy |
+| `HealthState` | `IEndpointHealthState?` | `null` | External health state instance (required for NServiceBus 7.x) |
 
 ### TransportKey
 
@@ -27,6 +28,24 @@ endpointConfig.EnableEndpointHealth(options =>
 ```
 
 See [TransportKey Specification](Feature-TransportKey-Specification.md) for detailed information.
+
+### HealthState (NServiceBus 7.x)
+
+For NServiceBus 7.x, the internal container is separate from ASP.NET Core DI. You must provide an external `EndpointHealthState` instance that is shared between NServiceBus and the ASP.NET Core health check:
+
+```csharp
+// Create and register the shared health state
+var healthState = new EndpointHealthState("primary-sql");
+services.AddSingleton<IEndpointHealthState>(healthState);
+
+// Configure NServiceBus with the same instance
+endpointConfig.EnableEndpointHealth(options =>
+{
+    options.HealthState = healthState;
+});
+```
+
+For NServiceBus 8.x (NET9+), this property is optional. If not set, a health state instance is created automatically and registered in DI.
 
 ### Example Configuration
 

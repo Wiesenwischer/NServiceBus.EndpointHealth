@@ -43,4 +43,32 @@ public class EndpointHealthOptions
     /// allows for 2-3 missed pings before the endpoint is considered unhealthy.
     /// </remarks>
     public TimeSpan UnhealthyAfter { get; set; } = TimeSpan.FromMinutes(3);
+
+    /// <summary>
+    /// Gets or sets an external health state instance to use.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// For NServiceBus 7.x, you must provide an external health state instance because
+    /// NServiceBus uses an internal container that is separate from ASP.NET Core DI.
+    /// Register the same instance in both ASP.NET Core DI and here.
+    /// </para>
+    /// <para>
+    /// For NServiceBus 8.x (NET9_0+), this is optional. If not set, a new instance
+    /// will be created and registered in DI automatically.
+    /// </para>
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// // NServiceBus 7.x usage:
+    /// var healthState = new EndpointHealthState("my-transport");
+    /// services.AddSingleton&lt;IEndpointHealthState&gt;(healthState);
+    ///
+    /// endpointConfig.EnableEndpointHealth(options =>
+    /// {
+    ///     options.HealthState = healthState;
+    /// });
+    /// </code>
+    /// </example>
+    public IEndpointHealthState? HealthState { get; set; }
 }
