@@ -63,7 +63,7 @@ jobs:
       run: dotnet build --no-restore --configuration Release /p:Version=${{ steps.gitversion.outputs.semVer }} /p:AssemblyVersion=${{ steps.gitversion.outputs.assemblySemVer }} /p:FileVersion=${{ steps.gitversion.outputs.assemblySemFileVer }} /p:InformationalVersion="${{ steps.gitversion.outputs.informationalVersion }}"
 
     - name: Test (Unit Tests)
-      run: dotnet test --no-build --configuration Release --filter "FullyQualifiedName!~IntegrationTests" --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage --logger "trx;LogFileName=test-results.trx"
+      run: dotnet test --no-build --configuration Release --filter "FullyQualifiedName!~IntegrationTests" --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage --logger "trx"
 
     - name: Test Report
       uses: dorny/test-reporter@v1
