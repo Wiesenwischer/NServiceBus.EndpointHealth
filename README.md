@@ -51,6 +51,22 @@ For detailed documentation, see the [docs](docs/Home.md) or the [Wiki](../../wik
 - [API Reference](docs/API-Reference.md)
 - [Troubleshooting](docs/Troubleshooting.md)
 
+## Building
+
+```powershell
+# Build with versioning
+.\build.ps1
+
+# Build + run tests
+.\build.ps1 -Test
+
+# Build + create NuGet packages
+.\build.ps1 -Pack
+
+# Publish to local Azure DevOps feed
+.\publish-local.ps1
+```
+
 ## Contributing
 
 Pull requests are welcome.
