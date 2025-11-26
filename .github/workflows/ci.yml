@@ -21,11 +21,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     outputs:
-      semVer: ${{ steps.gitversion.outputs.semVer }}
-      fullSemVer: ${{ steps.gitversion.outputs.fullSemVer }}
-      assemblySemVer: ${{ steps.gitversion.outputs.assemblySemVer }}
-      assemblySemFileVer: ${{ steps.gitversion.outputs.assemblySemFileVer }}
-      informationalVersion: ${{ steps.gitversion.outputs.informationalVersion }}
+      version: ${{ steps.version.outputs.version }}
+      is_release: ${{ steps.version.outputs.is_release }}
 
     steps:
     - name: Checkout
@@ -38,29 +35,40 @@ jobs:
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
 
-    - name: Restore tools
-      run: dotnet tool restore
-
     - name: Determine Version
-      id: gitversion
+      id: version
       run: |
-        echo "semVer=$(dotnet gitversion /showvariable SemVer)" >> $GITHUB_OUTPUT
-        echo "fullSemVer=$(dotnet gitversion /showvariable FullSemVer)" >> $GITHUB_OUTPUT
-        echo "assemblySemVer=$(dotnet gitversion /showvariable AssemblySemVer)" >> $GITHUB_OUTPUT
-        echo "assemblySemFileVer=$(dotnet gitversion /showvariable AssemblySemFileVer)" >> $GITHUB_OUTPUT
-        echo "informationalVersion=$(dotnet gitversion /showvariable InformationalVersion)" >> $GITHUB_OUTPUT
+        if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+          # Release build: extract version from tag (e.g., v1.2.3 -> 1.2.3)
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "is_release=true" >> $GITHUB_OUTPUT
+          echo "Release version: $VERSION"
+        else
+          # CI build: use 0.0.0-ci.{run_number}
+          VERSION="0.0.0-ci.${{ github.run_number }}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "is_release=false" >> $GITHUB_OUTPUT
+          echo "CI version: $VERSION"
+        fi
 
     - name: Display Version
       run: |
-        echo "SemVer: ${{ steps.gitversion.outputs.semVer }}"
-        echo "FullSemVer: ${{ steps.gitversion.outputs.fullSemVer }}"
-        echo "Is Tag: ${{ startsWith(github.ref, 'refs/tags/') }}"
+        echo "Version: ${{ steps.version.outputs.version }}"
+        echo "Is Release: ${{ steps.version.outputs.is_release }}"
 
     - name: Restore dependencies
       run: dotnet restore
 
     - name: Build
-      run: dotnet build --no-restore --configuration Release /p:Version=${{ steps.gitversion.outputs.semVer }} /p:AssemblyVersion=${{ steps.gitversion.outputs.assemblySemVer }} /p:FileVersion=${{ steps.gitversion.outputs.assemblySemFileVer }} /p:InformationalVersion="${{ steps.gitversion.outputs.informationalVersion }}"
+      run: |
+        VERSION="${{ steps.version.outputs.version }}"
+        ASSEMBLY_VERSION="${VERSION%%-*}.0"  # Strip prerelease suffix, add .0
+        dotnet build --no-restore --configuration Release \
+          /p:Version=$VERSION \
+          /p:AssemblyVersion=$ASSEMBLY_VERSION \
+          /p:FileVersion=$ASSEMBLY_VERSION \
+          /p:InformationalVersion=$VERSION
 
     - name: Test (Unit Tests)
       run: dotnet test --no-build --configuration Release --filter "FullyQualifiedName!~IntegrationTests" --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage --logger "trx"
@@ -99,7 +107,7 @@ jobs:
       continue-on-error: true
 
     - name: Pack NuGet packages
-      run: dotnet pack --no-build --configuration Release /p:PackageVersion=${{ steps.gitversion.outputs.semVer }} --output ./artifacts
+      run: dotnet pack --no-build --configuration Release /p:PackageVersion=${{ steps.version.outputs.version }} --output ./artifacts
 
     - name: Upload NuGet artifacts
       uses: actions/upload-artifact@v4
@@ -188,7 +196,7 @@ jobs:
       id: changelog
       run: |
         # Extract the section for this version from CHANGELOG.md
-        VERSION="${{ needs.build.outputs.semVer }}"
+        VERSION="${{ needs.build.outputs.version }}"
         # Get content between version headers, or use default message
         NOTES=$(sed -n "/## \[${VERSION}\]/,/## \[/p" CHANGELOG.md | sed '$d' | tail -n +2) || true
         if [ -z "$NOTES" ]; then
@@ -200,10 +208,10 @@ jobs:
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
       with:
-        name: v${{ needs.build.outputs.semVer }}
+        name: v${{ needs.build.outputs.version }}
         body_path: release-notes.md
         draft: false
-        prerelease: ${{ contains(needs.build.outputs.semVer, '-') }}
+        prerelease: ${{ contains(needs.build.outputs.version, '-') }}
         files: ./artifacts/*
 
   publish:
