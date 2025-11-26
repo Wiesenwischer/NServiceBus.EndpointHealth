@@ -1,182 +1,66 @@
-
 # NServiceBus EndpointHealth
 
-Dieses Repository enthält zwei NuGet-Pakete zur robusten technischen Überwachung von NServiceBus-Endpunkten:
+Robust health monitoring for NServiceBus endpoints.
 
-- **Wiesenwischer.NServiceBus.EndpointHealth**  
-  Core-Feature für NServiceBus, inkl. synthetischer Health-Pings, CriticalError-Tracking und State-API.
+[![CI](https://github.com/Wiesenwischer/NServiceBus.EndpointHealth/actions/workflows/ci.yml/badge.svg)](https://github.com/Wiesenwischer/NServiceBus.EndpointHealth/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/Wiesenwischer/NServiceBus.EndpointHealth/graph/badge.svg)](https://codecov.io/gh/Wiesenwischer/NServiceBus.EndpointHealth)
+[![NuGet](https://img.shields.io/nuget/v/Wiesenwischer.NServiceBus.EndpointHealth.svg)](https://www.nuget.org/packages/Wiesenwischer.NServiceBus.EndpointHealth)
+[![NuGet Downloads](https://img.shields.io/nuget/dt/Wiesenwischer.NServiceBus.EndpointHealth.svg)](https://www.nuget.org/packages/Wiesenwischer.NServiceBus.EndpointHealth)
+[![License](https://img.shields.io/github/license/Wiesenwischer/NServiceBus.EndpointHealth.svg)](LICENSE)
 
-- **Wiesenwischer.NServiceBus.EndpointHealth.AspNetCore**  
-  ASP.NET Core HealthCheck-Integration, basierend auf dem Core-Feature.
+## Packages
 
-Ziel ist es, eine zuverlässige Möglichkeit zu schaffen, um zu erkennen:
-- ob der NServiceBus Message Pump korrekt arbeitet  
-- ob ein CriticalError ausgelöst wurde  
-- ob der Endpoint intern hängt, auch wenn wenig Business-Nachrichten ankommen  
-- ob der Endpoint im Container als *healthy* oder *unhealthy* markiert werden muss
+| Package | Description | NuGet |
+|---------|-------------|-------|
+| `Wiesenwischer.NServiceBus.EndpointHealth` | Core health monitoring for NServiceBus | [![NuGet](https://img.shields.io/nuget/v/Wiesenwischer.NServiceBus.EndpointHealth.svg)](https://www.nuget.org/packages/Wiesenwischer.NServiceBus.EndpointHealth) |
+| `Wiesenwischer.NServiceBus.EndpointHealth.AspNetCore` | ASP.NET Core HealthCheck integration | [![NuGet](https://img.shields.io/nuget/v/Wiesenwischer.NServiceBus.EndpointHealth.AspNetCore.svg)](https://www.nuget.org/packages/Wiesenwischer.NServiceBus.EndpointHealth.AspNetCore) |
 
----
+## Features
 
-## 📦 1. NuGet Pakete
+- **Synthetic Health Pings**: Self-sent messages that verify the message processing pipeline
+- **Critical Error Tracking**: Automatic detection and reporting of NServiceBus critical errors
+- **Container Health Checks**: Integration with Kubernetes liveness/readiness probes
 
-| Paket | Beschreibung |
-|------|--------------|
-| **Wiesenwischer.NServiceBus.EndpointHealth** | Core-Feature für NSB Health Monitoring |
-| **Wiesenwischer.NServiceBus.EndpointHealth.AspNetCore** | ASP.NET Integration (HealthCheck) |
-
----
-
-## 🚀 2. Installation
-
-### Core-Paket (NServiceBus)
+## Quick Start
 
 ```bash
 dotnet add package Wiesenwischer.NServiceBus.EndpointHealth
-```
-
-### ASP.NET Core Integration
-
-```bash
 dotnet add package Wiesenwischer.NServiceBus.EndpointHealth.AspNetCore
 ```
 
----
-
-## ⚙️ 3. Verwendung – NServiceBus Endpoint
-
 ```csharp
+// Enable health monitoring
 var endpointConfig = new EndpointConfiguration("my-endpoint");
+endpointConfig.EnableEndpointHealth();
 
-endpointConfig.EnableEndpointHealth(options =>
-{
-    options.PingInterval = TimeSpan.FromSeconds(30);
-    options.UnhealthyAfter = TimeSpan.FromMinutes(3);
-});
-```
-
-**Das aktiviert:**
-
-- HealthPing-Feature  
-- HealthPingHandler  
-- CriticalError-State  
-- Hintergrund-Self-Pings  
-- State für ASP.NET/Core  
-
----
-
-## 🌐 4. Verwendung – ASP.NET Core Health Checks
-
-### NServiceBus 8.x (.NET 9+)
-
-Bei NServiceBus 8.x wird `Microsoft.Extensions.DependencyInjection` verwendet.
-Die Services werden automatisch registriert:
-
-```csharp
-builder.Services
-    .AddHealthChecks()
+// Add ASP.NET Core health check
+builder.Services.AddHealthChecks()
     .AddNServiceBusEndpointHealth();
 
-var app = builder.Build();
 app.MapHealthChecks("/health");
-app.Run();
 ```
 
-### NServiceBus 7.x (.NET Core 3.1)
+## Documentation
 
-Bei NServiceBus 7.x verwendet NServiceBus einen internen Container, der vom ASP.NET Core DI Container getrennt ist.
-Daher muss der `EndpointHealthState` manuell im ASP.NET Core Container registriert werden:
+For detailed documentation, see the [docs](docs/Home.md) or the [Wiki](../../wiki):
 
-```csharp
-public void ConfigureServices(IServiceCollection services)
-{
-    // Manuell EndpointHealthState erstellen und registrieren
-    var endpointHealthState = new EndpointHealthState();
-    services.AddSingleton<IEndpointHealthState>(endpointHealthState);
+- [Getting Started](docs/Getting-Started.md)
+- [Configuration Options](docs/Configuration-Options.md)
+- [ASP.NET Core Integration](docs/AspNetCore-Integration.md)
+- [Architecture](docs/Architecture.md)
+- [API Reference](docs/API-Reference.md)
+- [Troubleshooting](docs/Troubleshooting.md)
 
-    // Optional: Referenz für CriticalError Handler speichern
-    Program.EndpointHealthState = endpointHealthState;
+## Contributing
 
-    services
-        .AddHealthChecks()
-        .AddNServiceBusEndpointHealth();
-}
-```
+Pull requests are welcome.
 
-Im CriticalError Handler kann der State verwendet werden:
+- Fork the repository and create a feature branch
+- Write/update tests (`dotnet test`)
+- Open a PR against `main`
 
-```csharp
-private static async Task OnCriticalError(ICriticalErrorContext context)
-{
-    await context.Stop().ConfigureAwait(false);
+> **Note:** The `docs/` folder is automatically synced to the GitHub Wiki on push to `main`.
 
-    // CriticalError im Health State registrieren
-    EndpointHealthState?.RegisterCriticalError(context.Error, context.Exception);
-}
-```
+## License
 
-**HealthCheck liefert z. B.:**
-- 200 OK → Message Pump arbeitet  
-- 503 Service Unavailable → Ping zu alt / CriticalError aktiv  
-
----
-
-## 🧱 5. Projektstruktur
-
-```text
-repo/
-├─ src/
-│  ├─ Wiesenwischer.NServiceBus.EndpointHealth/
-│  └─ Wiesenwischer.NServiceBus.EndpointHealth.AspNetCore/
-├─ test/
-│  ├─ Wiesenwischer.NServiceBus.EndpointHealth.Tests/
-│  └─ Wiesenwischer.NServiceBus.EndpointHealth.AspNetCore.Tests/
-├─ NServiceBus.EndpointHealth.sln
-└─ README.md
-```
-
----
-
-## 🧪 6. Unit Tests
-
-Geplant:
-- HealthPingHandler Tests
-- CriticalError Tests
-- ASP.NET HealthCheck Tests
-- Options Tests
-
----
-
-## 🔧 7. CI/CD (optional)
-
-Empfohlene GitHub Action:
-
-- Build
-- Run Tests
-- Pack NuGets
-- Upload to NuGet on Tag Push (`v*.*.*`)
-
-Kann auf Wunsch automatisch erstellt werden.
-
----
-
-## 📜 8. Lizenz
-
-MIT License (empfohlen).
-
----
-
-## 🙌 9. Beitrag leisten
-
-Pull Requests sind willkommen.
-
----
-
-## 📄 10. Vollständige Spezifikation
-
-Die ausführliche Spezifikation ist verfügbar unter:
-
-**NServiceBusEndpointHealth-Specification.md**
-
----
-
-Viel Erfolg beim Einsatz – Feedback & Erweiterungen sind jederzeit willkommen!
+MIT License

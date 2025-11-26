@@ -11,12 +11,13 @@ Welcome to the NServiceBus EndpointHealth wiki! This documentation provides comp
 
 ## 📖 Documentation
 
-- [Getting Started](Getting-Started)
-- [Configuration Options](Configuration-Options)
-- [ASP.NET Core Integration](AspNetCore-Integration)
-- [Architecture](Architecture)
-- [API Reference](API-Reference)
-- [Troubleshooting](Troubleshooting)
+- [Getting Started](Getting-Started.md)
+- [Configuration Options](Configuration-Options.md)
+- [ASP.NET Core Integration](AspNetCore-Integration.md)
+- [Architecture](Architecture.md)
+- [API Reference](API-Reference.md)
+- [Troubleshooting](Troubleshooting.md)
+- [Full Specification](NServiceBusEndpointHealth-Specification.md)
 
 ## 🎯 What Problem Does This Solve?
 
