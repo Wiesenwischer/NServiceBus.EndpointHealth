@@ -6,6 +6,28 @@ namespace Wiesenwischer.NServiceBus.EndpointHealth;
 public class EndpointHealthOptions
 {
     /// <summary>
+    /// Gets or sets an optional logical key for the transport cluster.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The transport key allows grouping endpoints by their shared transport infrastructure
+    /// (e.g., "primary-sql", "project-sql", "nsb-main"). This is useful for monitoring
+    /// scenarios where multiple endpoints share a common transport and a transport failure
+    /// would affect all of them.
+    /// </para>
+    /// <para>
+    /// This is a logical identifier, not derived from connection strings or infrastructure.
+    /// It should be set via configuration or environment variables for consistent grouping.
+    /// </para>
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// options.TransportKey = "primary-sql";
+    /// </code>
+    /// </example>
+    public string? TransportKey { get; set; }
+
+    /// <summary>
     /// Gets or sets the interval at which health ping messages are sent.
     /// Default is 60 seconds.
     /// </summary>

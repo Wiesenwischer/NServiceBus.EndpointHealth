@@ -6,6 +6,16 @@ namespace Wiesenwischer.NServiceBus.EndpointHealth;
 public interface IEndpointHealthState
 {
     /// <summary>
+    /// Gets the optional logical key for the transport cluster this endpoint belongs to.
+    /// </summary>
+    /// <remarks>
+    /// Endpoints with the same transport key share a common transport infrastructure.
+    /// This can be used by monitoring systems to group endpoints and identify
+    /// transport-level failures affecting multiple endpoints.
+    /// </remarks>
+    string? TransportKey { get; }
+
+    /// <summary>
     /// Gets the UTC timestamp of the last successfully processed health ping.
     /// Returns null if no health ping has been processed yet.
     /// </summary>

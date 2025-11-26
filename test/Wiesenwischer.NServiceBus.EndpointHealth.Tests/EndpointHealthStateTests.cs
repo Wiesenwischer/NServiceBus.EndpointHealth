@@ -123,4 +123,51 @@ public class EndpointHealthStateTests
         var allTasksCompleted = await Task.WhenAll(tasks).WaitAsync(TimeSpan.FromSeconds(10)).ContinueWith(t => !t.IsFaulted);
         allTasksCompleted.Should().BeTrue();
     }
+
+    [Fact]
+    public void DefaultConstructor_HasNullTransportKey()
+    {
+        // Arrange & Act
+        var state = new EndpointHealthState();
+
+        // Assert
+        state.TransportKey.Should().BeNull();
+    }
+
+    [Fact]
+    public void Constructor_WithTransportKey_SetsTransportKey()
+    {
+        // Arrange & Act
+        var state = new EndpointHealthState("primary-sql");
+
+        // Assert
+        state.TransportKey.Should().Be("primary-sql");
+    }
+
+    [Fact]
+    public void Constructor_WithNullTransportKey_SetsNullTransportKey()
+    {
+        // Arrange & Act
+        var state = new EndpointHealthState(null);
+
+        // Assert
+        state.TransportKey.Should().BeNull();
+    }
+
+    [Fact]
+    public void TransportKey_IsImmutable()
+    {
+        // Arrange
+        var state = new EndpointHealthState("initial-key");
+
+        // Assert - TransportKey should not be settable after construction
+        state.TransportKey.Should().Be("initial-key");
+
+        // Operations should not affect TransportKey
+        state.RegisterHealthPingProcessed();
+        state.TransportKey.Should().Be("initial-key");
+
+        state.RegisterCriticalError("Error");
+        state.TransportKey.Should().Be("initial-key");
+    }
 }

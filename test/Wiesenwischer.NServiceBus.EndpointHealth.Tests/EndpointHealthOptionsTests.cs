@@ -49,4 +49,27 @@ public class EndpointHealthOptionsTests
         // Assert
         options.UnhealthyAfter.Should().Be(TimeSpan.FromMinutes(5));
     }
+
+    [Fact]
+    public void DefaultTransportKey_IsNull()
+    {
+        // Arrange & Act
+        var options = new EndpointHealthOptions();
+
+        // Assert
+        options.TransportKey.Should().BeNull();
+    }
+
+    [Fact]
+    public void TransportKey_CanBeSet()
+    {
+        // Arrange & Act
+        var options = new EndpointHealthOptions
+        {
+            TransportKey = "primary-sql"
+        };
+
+        // Assert
+        options.TransportKey.Should().Be("primary-sql");
+    }
 }

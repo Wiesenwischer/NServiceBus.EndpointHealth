@@ -11,6 +11,26 @@ public class EndpointHealthState : IEndpointHealthState
     private bool _critical;
     private string? _criticalMessage;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="EndpointHealthState"/> class.
+    /// </summary>
+    public EndpointHealthState()
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="EndpointHealthState"/> class
+    /// with the specified transport key.
+    /// </summary>
+    /// <param name="transportKey">The optional logical key for the transport cluster.</param>
+    public EndpointHealthState(string? transportKey)
+    {
+        TransportKey = transportKey;
+    }
+
+    /// <inheritdoc />
+    public string? TransportKey { get; }
+
     /// <inheritdoc />
     public DateTime? LastHealthPingProcessedUtc
     {
