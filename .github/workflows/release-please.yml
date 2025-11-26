@@ -22,6 +22,6 @@ jobs:
 
       # When a release is created, release-please creates a tag (e.g., v0.3.0)
       # The existing CI workflow will trigger on this tag and handle:
-      # - Building with GitVersion
+      # - Building with version from tag
       # - Creating GitHub Release
       # - Publishing to NuGet

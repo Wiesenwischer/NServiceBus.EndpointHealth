@@ -24,37 +24,19 @@ $ErrorActionPreference = "Stop"
 
 # Determine version
 if (-not $Version) {
-    Write-Host "Determining version from git..." -ForegroundColor Cyan
-
-    # Temporarily allow errors for git commands (expected when no tags exist)
-    $oldErrorAction = $ErrorActionPreference
-    $ErrorActionPreference = 'SilentlyContinue'
-
-    # Try to get version from latest tag
-    $tag = git describe --tags --abbrev=0 2>$null
-    $tagExitCode = $LASTEXITCODE
-
-    if ($tagExitCode -eq 0 -and $tag -match '^v?(\d+\.\d+\.\d+.*)$') {
-        $baseVersion = $Matches[1]
-
-        # Check if we're exactly on the tag
-        git describe --tags --exact-match 2>$null | Out-Null
-        if ($LASTEXITCODE -eq 0) {
-            $Version = $baseVersion
-            Write-Host "Using version from tag: $Version" -ForegroundColor Green
-        } else {
-            # We're ahead of the tag, use local suffix
-            $commitCount = git rev-list "$tag..HEAD" --count
-            $Version = "$baseVersion-local.$commitCount"
-            Write-Host "Using version: $Version (based on $tag + $commitCount commits)" -ForegroundColor Yellow
-        }
+    # Read version from release-please manifest
+    $manifestPath = Join-Path $PSScriptRoot ".release-please-manifest.json"
+    if (Test-Path $manifestPath) {
+        $manifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
+        $baseVersion = $manifest.'.'
+        # Get commit count for unique build number
+        $commitCount = git rev-list HEAD --count
+        $Version = "$baseVersion-ci.$commitCount"
+        Write-Host "Using version from manifest: $Version" -ForegroundColor Yellow
     } else {
-        $Version = "0.0.0-local"
-        Write-Host "No git tag found, using: $Version" -ForegroundColor Yellow
+        $Version = "0.0.0-ci"
+        Write-Host "No manifest found, using: $Version" -ForegroundColor Yellow
     }
-
-    # Restore error action preference
-    $ErrorActionPreference = $oldErrorAction
 } else {
     Write-Host "Using specified version: $Version" -ForegroundColor Green
 }

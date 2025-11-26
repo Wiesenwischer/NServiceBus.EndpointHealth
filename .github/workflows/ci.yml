@@ -45,8 +45,9 @@ jobs:
           echo "is_release=true" >> $GITHUB_OUTPUT
           echo "Release version: $VERSION"
         else
-          # CI build: use 0.0.0-ci.{run_number}
-          VERSION="0.0.0-ci.${{ github.run_number }}"
+          # CI build: read base version from release-please manifest
+          BASE_VERSION=$(jq -r '.\".\"' .release-please-manifest.json)
+          VERSION="${BASE_VERSION}-ci.${{ github.run_number }}"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "is_release=false" >> $GITHUB_OUTPUT
           echo "CI version: $VERSION"

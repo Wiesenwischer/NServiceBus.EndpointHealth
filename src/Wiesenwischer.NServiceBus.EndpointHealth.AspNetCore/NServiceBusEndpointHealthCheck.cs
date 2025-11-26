@@ -48,6 +48,11 @@ public class NServiceBusEndpointHealthCheck : IHealthCheck
     public const string DataKeyTimeSinceLastPing = "timeSinceLastPing";
 
     /// <summary>
+    /// Data key for the ping interval in health check results.
+    /// </summary>
+    public const string DataKeyPingInterval = "pingInterval";
+
+    /// <summary>
     /// Data key for the unhealthy threshold in health check results.
     /// </summary>
     public const string DataKeyUnhealthyAfter = "unhealthyAfter";
@@ -107,6 +112,7 @@ public class NServiceBusEndpointHealthCheck : IHealthCheck
         var data = new Dictionary<string, object>
         {
             [DataKeyHasCriticalError] = _state.HasCriticalError,
+            [DataKeyPingInterval] = _options.PingInterval.ToString(),
             [DataKeyUnhealthyAfter] = _options.UnhealthyAfter.ToString()
         };
 

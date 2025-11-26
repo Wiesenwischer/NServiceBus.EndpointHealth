@@ -153,6 +153,21 @@ public class NServiceBusEndpointHealthCheckTests
     }
 
     [Fact]
+    public async Task CheckHealthAsync_DataContainsPingInterval()
+    {
+        // Arrange
+        _stateMock.Setup(s => s.HasCriticalError).Returns(false);
+        _stateMock.Setup(s => s.LastHealthPingProcessedUtc).Returns(DateTime.UtcNow);
+
+        // Act
+        var result = await _healthCheck.CheckHealthAsync(new HealthCheckContext());
+
+        // Assert
+        result.Data.Should().ContainKey(NServiceBusEndpointHealthCheck.DataKeyPingInterval);
+        result.Data[NServiceBusEndpointHealthCheck.DataKeyPingInterval].Should().Be(_options.PingInterval.ToString());
+    }
+
+    [Fact]
     public async Task CheckHealthAsync_DataContainsUnhealthyAfter()
     {
         // Arrange
