@@ -136,4 +136,139 @@ public class NServiceBusEndpointHealthCheckTests
         // Assert
         result.Status.Should().Be(HealthStatus.Healthy);
     }
+
+    [Fact]
+    public async Task CheckHealthAsync_DataContainsHasCriticalError()
+    {
+        // Arrange
+        _stateMock.Setup(s => s.HasCriticalError).Returns(false);
+        _stateMock.Setup(s => s.LastHealthPingProcessedUtc).Returns(DateTime.UtcNow);
+
+        // Act
+        var result = await _healthCheck.CheckHealthAsync(new HealthCheckContext());
+
+        // Assert
+        result.Data.Should().ContainKey(NServiceBusEndpointHealthCheck.DataKeyHasCriticalError);
+        result.Data[NServiceBusEndpointHealthCheck.DataKeyHasCriticalError].Should().Be(false);
+    }
+
+    [Fact]
+    public async Task CheckHealthAsync_DataContainsUnhealthyAfter()
+    {
+        // Arrange
+        _stateMock.Setup(s => s.HasCriticalError).Returns(false);
+        _stateMock.Setup(s => s.LastHealthPingProcessedUtc).Returns(DateTime.UtcNow);
+
+        // Act
+        var result = await _healthCheck.CheckHealthAsync(new HealthCheckContext());
+
+        // Assert
+        result.Data.Should().ContainKey(NServiceBusEndpointHealthCheck.DataKeyUnhealthyAfter);
+        result.Data[NServiceBusEndpointHealthCheck.DataKeyUnhealthyAfter].Should().Be(_options.UnhealthyAfter.ToString());
+    }
+
+    [Fact]
+    public async Task CheckHealthAsync_DataContainsTransportKey_WhenSet()
+    {
+        // Arrange
+        _stateMock.Setup(s => s.HasCriticalError).Returns(false);
+        _stateMock.Setup(s => s.LastHealthPingProcessedUtc).Returns(DateTime.UtcNow);
+        _stateMock.Setup(s => s.TransportKey).Returns("primary-sql");
+
+        // Act
+        var result = await _healthCheck.CheckHealthAsync(new HealthCheckContext());
+
+        // Assert
+        result.Data.Should().ContainKey(NServiceBusEndpointHealthCheck.DataKeyTransportKey);
+        result.Data[NServiceBusEndpointHealthCheck.DataKeyTransportKey].Should().Be("primary-sql");
+    }
+
+    [Fact]
+    public async Task CheckHealthAsync_DataOmitsTransportKey_WhenNull()
+    {
+        // Arrange
+        _stateMock.Setup(s => s.HasCriticalError).Returns(false);
+        _stateMock.Setup(s => s.LastHealthPingProcessedUtc).Returns(DateTime.UtcNow);
+        _stateMock.Setup(s => s.TransportKey).Returns((string?)null);
+
+        // Act
+        var result = await _healthCheck.CheckHealthAsync(new HealthCheckContext());
+
+        // Assert
+        result.Data.Should().NotContainKey(NServiceBusEndpointHealthCheck.DataKeyTransportKey);
+    }
+
+    [Fact]
+    public async Task CheckHealthAsync_DataContainsLastHealthPingProcessedUtc_WhenSet()
+    {
+        // Arrange
+        var pingTime = DateTime.UtcNow.AddSeconds(-30);
+        _stateMock.Setup(s => s.HasCriticalError).Returns(false);
+        _stateMock.Setup(s => s.LastHealthPingProcessedUtc).Returns(pingTime);
+
+        // Act
+        var result = await _healthCheck.CheckHealthAsync(new HealthCheckContext());
+
+        // Assert
+        result.Data.Should().ContainKey(NServiceBusEndpointHealthCheck.DataKeyLastHealthPingProcessedUtc);
+        result.Data[NServiceBusEndpointHealthCheck.DataKeyLastHealthPingProcessedUtc].Should().Be(pingTime.ToString("O"));
+    }
+
+    [Fact]
+    public async Task CheckHealthAsync_DataOmitsLastHealthPingProcessedUtc_WhenNull()
+    {
+        // Arrange
+        _stateMock.Setup(s => s.HasCriticalError).Returns(false);
+        _stateMock.Setup(s => s.LastHealthPingProcessedUtc).Returns((DateTime?)null);
+
+        // Act
+        var result = await _healthCheck.CheckHealthAsync(new HealthCheckContext());
+
+        // Assert
+        result.Data.Should().NotContainKey(NServiceBusEndpointHealthCheck.DataKeyLastHealthPingProcessedUtc);
+    }
+
+    [Fact]
+    public async Task CheckHealthAsync_DataContainsTimeSinceLastPing_WhenPingExists()
+    {
+        // Arrange
+        _stateMock.Setup(s => s.HasCriticalError).Returns(false);
+        _stateMock.Setup(s => s.LastHealthPingProcessedUtc).Returns(DateTime.UtcNow.AddSeconds(-30));
+
+        // Act
+        var result = await _healthCheck.CheckHealthAsync(new HealthCheckContext());
+
+        // Assert
+        result.Data.Should().ContainKey(NServiceBusEndpointHealthCheck.DataKeyTimeSinceLastPing);
+    }
+
+    [Fact]
+    public async Task CheckHealthAsync_DataContainsCriticalErrorMessage_WhenError()
+    {
+        // Arrange
+        _stateMock.Setup(s => s.HasCriticalError).Returns(true);
+        _stateMock.Setup(s => s.CriticalErrorMessage).Returns("Transport failed");
+
+        // Act
+        var result = await _healthCheck.CheckHealthAsync(new HealthCheckContext());
+
+        // Assert
+        result.Data.Should().ContainKey(NServiceBusEndpointHealthCheck.DataKeyCriticalErrorMessage);
+        result.Data[NServiceBusEndpointHealthCheck.DataKeyCriticalErrorMessage].Should().Be("Transport failed");
+    }
+
+    [Fact]
+    public async Task CheckHealthAsync_DataOmitsCriticalErrorMessage_WhenNoError()
+    {
+        // Arrange
+        _stateMock.Setup(s => s.HasCriticalError).Returns(false);
+        _stateMock.Setup(s => s.LastHealthPingProcessedUtc).Returns(DateTime.UtcNow);
+        _stateMock.Setup(s => s.CriticalErrorMessage).Returns((string?)null);
+
+        // Act
+        var result = await _healthCheck.CheckHealthAsync(new HealthCheckContext());
+
+        // Assert
+        result.Data.Should().NotContainKey(NServiceBusEndpointHealthCheck.DataKeyCriticalErrorMessage);
+    }
 }

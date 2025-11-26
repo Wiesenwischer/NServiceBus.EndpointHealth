@@ -32,34 +32,104 @@ public class NServiceBusEndpointHealthCheck : IHealthCheck
         _options = options;
     }
 
+    /// <summary>
+    /// Data key for the transport key in health check results.
+    /// </summary>
+    public const string DataKeyTransportKey = "transportKey";
+
+    /// <summary>
+    /// Data key for the last health ping timestamp in health check results.
+    /// </summary>
+    public const string DataKeyLastHealthPingProcessedUtc = "lastHealthPingProcessedUtc";
+
+    /// <summary>
+    /// Data key for the time since last ping in health check results.
+    /// </summary>
+    public const string DataKeyTimeSinceLastPing = "timeSinceLastPing";
+
+    /// <summary>
+    /// Data key for the unhealthy threshold in health check results.
+    /// </summary>
+    public const string DataKeyUnhealthyAfter = "unhealthyAfter";
+
+    /// <summary>
+    /// Data key for the critical error flag in health check results.
+    /// </summary>
+    public const string DataKeyHasCriticalError = "hasCriticalError";
+
+    /// <summary>
+    /// Data key for the critical error message in health check results.
+    /// </summary>
+    public const string DataKeyCriticalErrorMessage = "criticalErrorMessage";
+
     /// <inheritdoc />
     public Task<HealthCheckResult> CheckHealthAsync(
         HealthCheckContext context,
         CancellationToken cancellationToken = default)
     {
+        var now = DateTime.UtcNow;
+        var lastPing = _state.LastHealthPingProcessedUtc;
+        var timeSinceLastPing = lastPing.HasValue ? now - lastPing.Value : (TimeSpan?)null;
+
+        // Build data dictionary with all relevant information
+        var data = BuildDataDictionary(lastPing, timeSinceLastPing);
+
         if (_state.HasCriticalError)
         {
             return Task.FromResult(HealthCheckResult.Unhealthy(
-                $"Critical error detected: {_state.CriticalErrorMessage}"));
+                $"Critical error detected: {_state.CriticalErrorMessage}",
+                data: data));
         }
-
-        var now = DateTime.UtcNow;
-        var lastPing = _state.LastHealthPingProcessedUtc;
 
         if (lastPing is null)
         {
             return Task.FromResult(HealthCheckResult.Unhealthy(
-                "No health ping has been processed yet. Endpoint may not have started."));
+                "No health ping has been processed yet. Endpoint may not have started.",
+                data: data));
         }
 
-        var timeSinceLastPing = now - lastPing.Value;
         if (timeSinceLastPing > _options.UnhealthyAfter)
         {
             return Task.FromResult(HealthCheckResult.Unhealthy(
-                $"No health ping for {timeSinceLastPing.TotalSeconds:F0}s (threshold: {_options.UnhealthyAfter.TotalSeconds:F0}s). Message pump may be stuck."));
+                $"No health ping for {timeSinceLastPing.Value.TotalSeconds:F0}s (threshold: {_options.UnhealthyAfter.TotalSeconds:F0}s). Message pump may be stuck.",
+                data: data));
         }
 
         return Task.FromResult(HealthCheckResult.Healthy(
-            $"Last health ping: {timeSinceLastPing.TotalSeconds:F0}s ago"));
+            $"Last health ping: {timeSinceLastPing!.Value.TotalSeconds:F0}s ago",
+            data: data));
+    }
+
+    private IReadOnlyDictionary<string, object> BuildDataDictionary(
+        DateTime? lastPing,
+        TimeSpan? timeSinceLastPing)
+    {
+        var data = new Dictionary<string, object>
+        {
+            [DataKeyHasCriticalError] = _state.HasCriticalError,
+            [DataKeyUnhealthyAfter] = _options.UnhealthyAfter.ToString()
+        };
+
+        if (_state.TransportKey is not null)
+        {
+            data[DataKeyTransportKey] = _state.TransportKey;
+        }
+
+        if (lastPing.HasValue)
+        {
+            data[DataKeyLastHealthPingProcessedUtc] = lastPing.Value.ToString("O");
+        }
+
+        if (timeSinceLastPing.HasValue)
+        {
+            data[DataKeyTimeSinceLastPing] = timeSinceLastPing.Value.ToString();
+        }
+
+        if (_state.CriticalErrorMessage is not null)
+        {
+            data[DataKeyCriticalErrorMessage] = _state.CriticalErrorMessage;
+        }
+
+        return data;
     }
 }

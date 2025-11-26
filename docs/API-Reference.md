@@ -274,6 +274,30 @@ public NServiceBusEndpointHealthCheck(
 3. If time since last ping > `UnhealthyAfter` → `Unhealthy`
 4. Otherwise → `Healthy`
 
+#### Data Properties
+
+The health check result includes a `Data` dictionary with the following properties for monitoring systems and HealthChecks UI:
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `transportKey` | `string` | Logical transport cluster identifier (omitted if null) |
+| `lastHealthPingProcessedUtc` | `string` | ISO 8601 timestamp of last ping (omitted if null) |
+| `timeSinceLastPing` | `string` | TimeSpan since last ping (omitted if no ping) |
+| `unhealthyAfter` | `string` | Configured unhealthy threshold |
+| `hasCriticalError` | `bool` | Whether a critical error has occurred |
+| `criticalErrorMessage` | `string` | Error message (omitted if no error) |
+
+These properties are accessible via constants:
+
+```csharp
+NServiceBusEndpointHealthCheck.DataKeyTransportKey
+NServiceBusEndpointHealthCheck.DataKeyLastHealthPingProcessedUtc
+NServiceBusEndpointHealthCheck.DataKeyTimeSinceLastPing
+NServiceBusEndpointHealthCheck.DataKeyUnhealthyAfter
+NServiceBusEndpointHealthCheck.DataKeyHasCriticalError
+NServiceBusEndpointHealthCheck.DataKeyCriticalErrorMessage
+```
+
 ---
 
 ### NServiceBusEndpointHealthChecksExtensions
