@@ -3,6 +3,7 @@
 Robust health monitoring for NServiceBus endpoints.
 
 [![CI](https://github.com/Wiesenwischer/NServiceBus.EndpointHealth/actions/workflows/ci.yml/badge.svg)](https://github.com/Wiesenwischer/NServiceBus.EndpointHealth/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/Wiesenwischer/406ad9783017f2c6d0c89222f274562f/raw/test-badge.json)](https://github.com/Wiesenwischer/NServiceBus.EndpointHealth/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/github/Wiesenwischer/NServiceBus.EndpointHealth/graph/badge.svg?token=W9QL9P7K53)](https://codecov.io/github/Wiesenwischer/NServiceBus.EndpointHealth)
 [![NuGet](https://img.shields.io/nuget/v/Wiesenwischer.NServiceBus.EndpointHealth.svg)](https://www.nuget.org/packages/Wiesenwischer.NServiceBus.EndpointHealth)
 [![NuGet Downloads](https://img.shields.io/nuget/dt/Wiesenwischer.NServiceBus.EndpointHealth.svg)](https://www.nuget.org/packages/Wiesenwischer.NServiceBus.EndpointHealth)

@@ -20,6 +20,7 @@ public interface IEndpointHealthState
 
 | Property | Type | Description |
 |----------|------|-------------|
+| `TransportKey` | `string?` | Logical transport cluster identifier. Null if not configured. |
 | `LastHealthPingProcessedUtc` | `DateTime?` | UTC timestamp of last processed health ping. Null if never processed. |
 | `HasCriticalError` | `bool` | True if a critical error has occurred. |
 | `CriticalErrorMessage` | `string?` | Error message if critical error occurred. |
@@ -41,6 +42,16 @@ Thread-safe implementation of `IEndpointHealthState`.
 public class EndpointHealthState : IEndpointHealthState
 ```
 
+#### Constructor
+
+```csharp
+public EndpointHealthState(string? transportKey = null)
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `transportKey` | `string?` | Optional logical transport cluster identifier |
+
 Registered as singleton in DI container.
 
 ---
@@ -57,8 +68,9 @@ public class EndpointHealthOptions
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
+| `TransportKey` | `string?` | `null` | Logical transport cluster identifier |
 | `PingInterval` | `TimeSpan` | 60s | Interval between health pings |
-| `UnhealthyAfter` | `TimeSpan` | 2min | Time without ping before unhealthy |
+| `UnhealthyAfter` | `TimeSpan` | 3min | Time without ping before unhealthy |
 
 ---
 
@@ -117,6 +129,7 @@ public static class EndpointHealthConfigurationExtensions
 ```csharp
 endpointConfig.EnableEndpointHealth(options =>
 {
+    options.TransportKey = "primary-sql";
     options.PingInterval = TimeSpan.FromSeconds(30);
     options.UnhealthyAfter = TimeSpan.FromMinutes(2);
 });
@@ -127,6 +140,107 @@ endpointConfig.EnableEndpointHealth(options =>
 ## Wiesenwischer.NServiceBus.EndpointHealth.AspNetCore
 
 ### Namespace: `Wiesenwischer.NServiceBus.EndpointHealth.AspNetCore`
+
+---
+
+### EndpointHealthOptionsConfigurationExtensions
+
+Extension methods for configuring `EndpointHealthOptions` from `IConfiguration`.
+
+```csharp
+public static class EndpointHealthOptionsConfigurationExtensions
+```
+
+#### Methods
+
+| Method | Description |
+|--------|-------------|
+| `FromConfiguration(IConfiguration, string)` | Configures options from a configuration section. |
+
+#### FromConfiguration
+
+```csharp
+public static EndpointHealthOptions FromConfiguration(
+    this EndpointHealthOptions options,
+    IConfiguration configuration,
+    string sectionName = "EndpointHealth")
+```
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `options` | `EndpointHealthOptions` | - | The options instance to configure |
+| `configuration` | `IConfiguration` | - | The configuration to read from |
+| `sectionName` | `string` | `"EndpointHealth"` | The configuration section name |
+
+**Returns**: The configured options instance for chaining.
+
+#### Example
+
+```csharp
+endpointConfig.EnableEndpointHealth(options =>
+{
+    options.FromConfiguration(configuration);
+});
+```
+
+Configuration in appsettings.json:
+
+```json
+{
+  "EndpointHealth": {
+    "TransportKey": "primary-sql",
+    "UnhealthyAfter": "00:02:00",
+    "PingInterval": "00:00:30"
+  }
+}
+```
+
+---
+
+### EndpointHealthConfigurationExtensions
+
+Extension methods for `EndpointConfiguration` with configuration support.
+
+```csharp
+public static class EndpointHealthConfigurationExtensions
+```
+
+#### Methods
+
+| Method | Description |
+|--------|-------------|
+| `ConfigureEndpointHealth(IConfiguration, Action<EndpointHealthOptions>?, string)` | Enables health monitoring with configuration binding. |
+
+#### ConfigureEndpointHealth
+
+```csharp
+public static void ConfigureEndpointHealth(
+    this EndpointConfiguration endpointConfiguration,
+    IConfiguration configuration,
+    Action<EndpointHealthOptions>? configure = null,
+    string sectionName = "EndpointHealth")
+```
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `endpointConfiguration` | `EndpointConfiguration` | - | The NServiceBus endpoint configuration |
+| `configuration` | `IConfiguration` | - | The configuration to read from |
+| `configure` | `Action<EndpointHealthOptions>?` | `null` | Optional callback to further configure options |
+| `sectionName` | `string` | `"EndpointHealth"` | The configuration section name |
+
+#### Example
+
+```csharp
+// Configuration only
+endpointConfig.ConfigureEndpointHealth(configuration);
+
+// Configuration with code overrides
+endpointConfig.ConfigureEndpointHealth(configuration, options =>
+{
+    if (string.IsNullOrWhiteSpace(options.TransportKey))
+        options.TransportKey = "default-transport";
+});
+```
 
 ---
 

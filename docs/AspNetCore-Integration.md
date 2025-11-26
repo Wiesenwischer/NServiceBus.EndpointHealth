@@ -1,6 +1,6 @@
 # ASP.NET Core Integration
 
-This guide covers advanced integration scenarios with ASP.NET Core.
+This guide covers integration with ASP.NET Core, including configuration binding and health checks.
 
 ## Basic Setup
 
@@ -17,6 +17,88 @@ var app = builder.Build();
 app.MapHealthChecks("/health");
 
 app.Run();
+```
+
+## Configuration from appsettings.json
+
+The ASP.NET Core package provides extensions for loading `EndpointHealthOptions` from configuration.
+
+### appsettings.json
+
+```json
+{
+  "EndpointHealth": {
+    "TransportKey": "primary-sql",
+    "PingInterval": "00:00:30",
+    "UnhealthyAfter": "00:03:00"
+  }
+}
+```
+
+### Using ConfigureEndpointHealth
+
+The simplest approach is to use `ConfigureEndpointHealth`, which combines configuration binding with the core `EnableEndpointHealth`:
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+
+var endpointConfig = new EndpointConfiguration("my-endpoint");
+
+// Load all options from configuration
+endpointConfig.ConfigureEndpointHealth(builder.Configuration);
+
+// Or with additional code-based overrides
+endpointConfig.ConfigureEndpointHealth(builder.Configuration, options =>
+{
+    // Provide a fallback if TransportKey not configured
+    if (string.IsNullOrWhiteSpace(options.TransportKey))
+        options.TransportKey = "default-transport";
+});
+```
+
+### Using FromConfiguration
+
+For more control, use `FromConfiguration` directly within `EnableEndpointHealth`:
+
+```csharp
+endpointConfig.EnableEndpointHealth(options =>
+{
+    // First apply configuration
+    options.FromConfiguration(builder.Configuration);
+
+    // Then override specific values
+    options.PingInterval = TimeSpan.FromSeconds(15);
+});
+```
+
+### Custom Configuration Section
+
+Both methods support custom section names:
+
+```json
+{
+  "MyApp": {
+    "Health": {
+      "TransportKey": "my-transport"
+    }
+  }
+}
+```
+
+```csharp
+endpointConfig.ConfigureEndpointHealth(
+    configuration,
+    sectionName: "MyApp:Health");
+```
+
+### Environment Variables
+
+Configuration also works with environment variables:
+
+```text
+ENDPOINTHEALTH__TRANSPORTKEY=primary-sql
+ENDPOINTHEALTH__PINGINTERVAL=00:00:30
+ENDPOINTHEALTH__UNHEALTHYAFTER=00:03:00
 ```
 
 ## Separate Liveness and Readiness Probes

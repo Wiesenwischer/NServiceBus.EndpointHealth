@@ -10,20 +10,74 @@ The `EndpointHealthOptions` class provides configuration for the health monitori
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
+| `TransportKey` | `string?` | `null` | Optional logical key for transport cluster grouping |
 | `PingInterval` | `TimeSpan` | 60 seconds | How often health ping messages are sent |
-| `UnhealthyAfter` | `TimeSpan` | 2 minutes | Time after last ping before marking as unhealthy |
+| `UnhealthyAfter` | `TimeSpan` | 3 minutes | Time after last ping before marking as unhealthy |
+
+### TransportKey
+
+The `TransportKey` property allows grouping endpoints by their logical transport cluster. This is useful for monitoring scenarios where multiple endpoints share the same transport infrastructure.
+
+```csharp
+endpointConfig.EnableEndpointHealth(options =>
+{
+    // Group this endpoint with others using the same SQL transport
+    options.TransportKey = "primary-sql";
+});
+```
+
+See [TransportKey Specification](Feature-TransportKey-Specification.md) for detailed information.
 
 ### Example Configuration
 
 ```csharp
 endpointConfig.EnableEndpointHealth(options =>
 {
+    // Logical transport cluster identifier
+    options.TransportKey = "primary-sql";
+
     // Send health pings every 30 seconds
     options.PingInterval = TimeSpan.FromSeconds(30);
 
     // Mark as unhealthy if no ping for 3 minutes
     options.UnhealthyAfter = TimeSpan.FromMinutes(3);
 });
+```
+
+## Configuration from appsettings.json
+
+When using the ASP.NET Core integration package, you can configure options via `appsettings.json`:
+
+```json
+{
+  "EndpointHealth": {
+    "TransportKey": "primary-sql",
+    "PingInterval": "00:00:30",
+    "UnhealthyAfter": "00:03:00"
+  }
+}
+```
+
+```csharp
+// Load configuration from appsettings.json
+endpointConfig.ConfigureEndpointHealth(configuration);
+
+// Or with additional code-based overrides
+endpointConfig.ConfigureEndpointHealth(configuration, options =>
+{
+    if (string.IsNullOrWhiteSpace(options.TransportKey))
+        options.TransportKey = "default-transport";
+});
+```
+
+### Environment Variables
+
+Configuration can also be provided via environment variables:
+
+```text
+ENDPOINTHEALTH__TRANSPORTKEY=primary-sql
+ENDPOINTHEALTH__PINGINTERVAL=00:00:30
+ENDPOINTHEALTH__UNHEALTHYAFTER=00:03:00
 ```
 
 ## Recommended Settings
@@ -35,6 +89,7 @@ For production environments where quick detection is critical:
 ```csharp
 endpointConfig.EnableEndpointHealth(options =>
 {
+    options.TransportKey = "prod-sql";
     options.PingInterval = TimeSpan.FromSeconds(15);
     options.UnhealthyAfter = TimeSpan.FromSeconds(45);
 });
@@ -85,10 +140,10 @@ Health ping messages use the same transport as business messages:
 ### Delayed Delivery Support
 
 The health ping feature relies on delayed message delivery. Ensure your transport supports this:
-- ✅ SQL Server Transport
-- ✅ RabbitMQ Transport
-- ✅ Azure Service Bus Transport
-- ✅ Learning Transport (for testing)
+- SQL Server Transport
+- RabbitMQ Transport
+- Azure Service Bus Transport
+- Learning Transport (for testing)
 
 ## ASP.NET Core Health Check Options
 

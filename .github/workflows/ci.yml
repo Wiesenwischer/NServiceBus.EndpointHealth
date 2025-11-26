@@ -67,11 +67,23 @@ jobs:
 
     - name: Test Report
       uses: dorny/test-reporter@v1
+      id: test-reporter
       if: success() || failure()
       with:
         name: Unit Tests
         path: ./coverage/*.trx
         reporter: dotnet-trx
+
+    - name: Create Test Badge
+      if: github.ref == 'refs/heads/main'
+      uses: schneegans/dynamic-badges-action@v1.7.0
+      with:
+        auth: ${{ secrets.GIST_TOKEN }}
+        gistID: ${{ vars.TEST_BADGE_GIST_ID }}
+        filename: test-badge.json
+        label: tests
+        message: "${{ steps.test-reporter.outputs.passed }} passed"
+        color: ${{ steps.test-reporter.outputs.failed == '0' && 'brightgreen' || 'red' }}
 
     - name: Merge coverage reports
       run: |
