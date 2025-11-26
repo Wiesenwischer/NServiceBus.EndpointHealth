@@ -5,27 +5,59 @@
 .PARAMETER Source
     The NuGet source to push to. Default: ams-alpha.Feed
 
+.PARAMETER Version
+    Version to use. Default: auto-detect from git tag or use 0.0.0-local
+
 .EXAMPLE
     .\publish-local.ps1
+
+.EXAMPLE
+    .\publish-local.ps1 -Version 1.0.0-beta.1
 #>
 
 param(
-    [string]$Source = "ams-alpha.Feed"
+    [string]$Source = "ams-alpha.Feed",
+    [string]$Version
 )
 
 $ErrorActionPreference = "Stop"
 
-Write-Host "Restoring tools..." -ForegroundColor Cyan
-dotnet tool restore
+# Determine version
+if (-not $Version) {
+    Write-Host "Determining version from git..." -ForegroundColor Cyan
 
-Write-Host "Calculating version with GitVersion..." -ForegroundColor Cyan
-$version = dotnet gitversion /showvariable SemVer
-$assemblyVersion = dotnet gitversion /showvariable AssemblySemVer
-$fileVersion = dotnet gitversion /showvariable AssemblySemFileVer
-$infoVersion = dotnet gitversion /showvariable InformationalVersion
+    # Try to get version from latest tag
+    $tag = git describe --tags --abbrev=0 2>$null
+    if ($LASTEXITCODE -eq 0 -and $tag -match '^v?(\d+\.\d+\.\d+.*)$') {
+        $baseVersion = $Matches[1]
 
-Write-Host "Version: $version" -ForegroundColor Green
-Write-Host "Assembly Version: $assemblyVersion" -ForegroundColor Green
+        # Check if we're exactly on the tag
+        git describe --tags --exact-match 2>$null | Out-Null
+        if ($LASTEXITCODE -eq 0) {
+            $Version = $baseVersion
+            Write-Host "Using version from tag: $Version" -ForegroundColor Green
+        } else {
+            # We're ahead of the tag, use local suffix
+            $commitCount = git rev-list "$tag..HEAD" --count
+            $Version = "$baseVersion-local.$commitCount"
+            Write-Host "Using version: $Version (based on $tag + $commitCount commits)" -ForegroundColor Yellow
+        }
+    } else {
+        $Version = "0.0.0-local"
+        Write-Host "No git tag found, using: $Version" -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "Using specified version: $Version" -ForegroundColor Green
+}
+
+# Calculate assembly version (major.minor.patch.0)
+$assemblyVersion = ($Version -replace '-.*$', '') + ".0"
+if ($assemblyVersion -notmatch '^\d+\.\d+\.\d+\.\d+$') {
+    $assemblyVersion = "0.0.0.0"
+}
+
+Write-Host "Version: $Version" -ForegroundColor Green
+Write-Host "Assembly Version: $assemblyVersion" -ForegroundColor Gray
 
 Write-Host "Cleaning artifacts folder..." -ForegroundColor Cyan
 if (Test-Path ./artifacts) {
@@ -34,10 +66,10 @@ if (Test-Path ./artifacts) {
 
 Write-Host "Building solution..." -ForegroundColor Cyan
 dotnet build --configuration Release `
-    /p:Version=$version `
+    /p:Version=$Version `
     /p:AssemblyVersion=$assemblyVersion `
-    /p:FileVersion=$fileVersion `
-    /p:InformationalVersion=$infoVersion
+    /p:FileVersion=$assemblyVersion `
+    /p:InformationalVersion=$Version
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Build failed!" -ForegroundColor Red
@@ -46,7 +78,7 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host "Packing NuGet packages..." -ForegroundColor Cyan
 dotnet pack --configuration Release --no-build --output ./artifacts `
-    /p:PackageVersion=$version
+    /p:PackageVersion=$Version
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Pack failed!" -ForegroundColor Red
@@ -63,4 +95,4 @@ Get-ChildItem ./artifacts/*.nupkg | ForEach-Object {
     }
 }
 
-Write-Host "Done! Published version $version to $Source" -ForegroundColor Green
+Write-Host "Done! Published version $Version to $Source" -ForegroundColor Green
