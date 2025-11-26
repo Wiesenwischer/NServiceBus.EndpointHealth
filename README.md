@@ -84,6 +84,22 @@ Pull requests are welcome.
 
 > **Note:** The `docs/` folder is automatically synced to the GitHub Wiki on push to `main`.
 
+## Releasing
+
+This project uses [release-please](https://github.com/googleapis/release-please) for automated releases.
+
+**Automated flow:**
+1. Commits with `feat:` or `fix:` prefixes trigger release-please to create/update a Release PR
+2. The PR accumulates changes and auto-generates the changelog
+3. Merge the PR when ready → a git tag is created → GitHub Release + NuGet publish
+
+**Manual release:**
+```bash
+git tag v0.3.0
+git push origin v0.3.0
+```
+This triggers the release workflow directly, bypassing release-please.
+
 ## License
 
 MIT License
