@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Configuration;
 
-namespace Wiesenwischer.NServiceBus.EndpointHealth.AspNetCore;
+namespace Wiesenwischer.NServiceBus.EndpointHealth;
 
 /// <summary>
 /// Extension methods for configuring <see cref="EndpointHealthOptions"/> from <see cref="IConfiguration"/>.

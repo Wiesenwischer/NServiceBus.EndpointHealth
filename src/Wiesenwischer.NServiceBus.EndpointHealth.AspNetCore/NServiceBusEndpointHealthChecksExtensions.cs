@@ -1,8 +1,9 @@
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Wiesenwischer.NServiceBus.EndpointHealth;
+using Wiesenwischer.NServiceBus.EndpointHealth.AspNetCore;
 
-namespace Wiesenwischer.NServiceBus.EndpointHealth.AspNetCore;
+namespace Microsoft.Extensions.DependencyInjection;
 
 /// <summary>
 /// Extension methods for adding NServiceBus endpoint health checks to ASP.NET Core.

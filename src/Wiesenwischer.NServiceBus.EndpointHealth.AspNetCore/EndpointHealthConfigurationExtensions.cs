@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Configuration;
-using NServiceBus;
+using Wiesenwischer.NServiceBus.EndpointHealth;
 
-namespace Wiesenwischer.NServiceBus.EndpointHealth.AspNetCore;
+namespace NServiceBus;
 
 /// <summary>
 /// Extension methods for configuring endpoint health monitoring with configuration support.
