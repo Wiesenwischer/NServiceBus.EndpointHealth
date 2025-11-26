@@ -71,7 +71,7 @@ jobs:
       if: success() || failure()
       with:
         name: Unit Tests
-        path: ./coverage/*.trx
+        path: ./coverage/**/*.trx
         reporter: dotnet-trx
 
     - name: Create Test Badge
