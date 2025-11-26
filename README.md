@@ -46,6 +46,7 @@ app.MapHealthChecks("/health");
 
 For detailed documentation, see the [docs](docs/Home.md) or the [Wiki](../../wiki):
 
+- [How It Works](docs/How-It-Works.md)
 - [Getting Started](docs/Getting-Started.md)
 - [Configuration Options](docs/Configuration-Options.md)
 - [ASP.NET Core Integration](docs/AspNetCore-Integration.md)

@@ -11,6 +11,7 @@ Welcome to the NServiceBus EndpointHealth wiki! This documentation provides comp
 
 ## 📖 Documentation
 
+- [How It Works](How-It-Works.md)
 - [Getting Started](Getting-Started.md)
 - [Configuration Options](Configuration-Options.md)
 - [ASP.NET Core Integration](AspNetCore-Integration.md)
