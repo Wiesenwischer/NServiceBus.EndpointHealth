@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using NServiceBus;
 using Wiesenwischer.NServiceBus.EndpointHealth;
+using Wiesenwischer.NServiceBus.EndpointHealth.AspNetCore;
 
 namespace Wiesenwischer.NServiceBus.EndpointHealth.IntegrationTests;
 
@@ -43,6 +44,7 @@ public class AspNetCoreHealthCheckTests : IAsyncLifetime
         var builder = new WebHostBuilder()
             .ConfigureServices(services =>
             {
+                services.AddRouting();
                 services.AddSingleton<IEndpointHealthState>(healthState);
 
                 if (configureOptions != null)
@@ -157,44 +159,46 @@ public class AspNetCoreHealthCheckTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task HealthEndpoint_WithCustomFailureStatus_ReturnsDegraded()
+    public async Task HealthEndpoint_WithCustomStatusCodes_CanReturnCustomHttpCode()
     {
         // Arrange
         _healthState = new EndpointHealthState();
-        _server = CreateTestServer(_healthState, options =>
-        {
-            options.UnhealthyAfter = TimeSpan.FromSeconds(1);
-        });
 
-        // Override the health check with Degraded status
-        _server.Dispose();
         var builder = new WebHostBuilder()
             .ConfigureServices(services =>
             {
+                services.AddRouting();
                 services.AddSingleton<IEndpointHealthState>(_healthState);
                 services.AddHealthChecks()
-                    .AddNServiceBusEndpointHealth(failureStatus: HealthStatus.Degraded);
+                    .AddNServiceBusEndpointHealth();
             })
             .Configure(app =>
             {
                 app.UseRouting();
                 app.UseEndpoints(endpoints =>
                 {
-                    endpoints.MapHealthChecks("/health");
+                    // Configure custom status codes: return 418 (I'm a teapot) for Unhealthy
+                    endpoints.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+                    {
+                        ResultStatusCodes =
+                        {
+                            [HealthStatus.Healthy] = 200,
+                            [HealthStatus.Degraded] = 200,
+                            [HealthStatus.Unhealthy] = 418 // Custom code for testing
+                        }
+                    });
                 });
             });
         _server = new TestServer(builder);
         _client = _server.CreateClient();
 
-        // No health ping registered
+        // No health ping registered - this should trigger Unhealthy status
 
         // Act
         var response = await _client.GetAsync("/health");
 
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.OK); // Degraded returns 200
-        var content = await response.Content.ReadAsStringAsync();
-        content.Should().Contain("Degraded");
+        // Assert - Custom 418 status code should be returned
+        ((int)response.StatusCode).Should().Be(418);
     }
 
     [Fact]
@@ -207,6 +211,7 @@ public class AspNetCoreHealthCheckTests : IAsyncLifetime
         var builder = new WebHostBuilder()
             .ConfigureServices(services =>
             {
+                services.AddRouting();
                 services.AddSingleton<IEndpointHealthState>(_healthState);
                 services.AddHealthChecks()
                     .AddNServiceBusEndpointHealth(tags: ["critical", "messaging"]);

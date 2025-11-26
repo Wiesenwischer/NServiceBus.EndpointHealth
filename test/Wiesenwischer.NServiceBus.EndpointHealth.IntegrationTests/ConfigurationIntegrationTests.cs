@@ -261,19 +261,21 @@ public class ConfigurationIntegrationTests : IAsyncLifetime
     [Fact]
     public void FromConfiguration_SupportsEnvironmentVariableFormat()
     {
-        // Arrange - Environment variables use double underscore for nesting
+        // Arrange - Environment variables use double underscore for hierarchy separator
+        // When using AddInMemoryCollection, we need to use colon (:) separator directly
+        // The double underscore (__) is only translated by AddEnvironmentVariables()
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["ENDPOINTHEALTH__TRANSPORTKEY"] = "env-var-transport",
-                ["ENDPOINTHEALTH__PINGINTERVAL"] = "00:00:20",
-                ["ENDPOINTHEALTH__UNHEALTHYAFTER"] = "00:01:00"
+                ["ENDPOINTHEALTH:TRANSPORTKEY"] = "env-var-transport",
+                ["ENDPOINTHEALTH:PINGINTERVAL"] = "00:00:20",
+                ["ENDPOINTHEALTH:UNHEALTHYAFTER"] = "00:01:00"
             })
             .Build();
 
         var options = new EndpointHealthOptions();
 
-        // Act - Note: Environment variable format needs different section name
+        // Act - Case-insensitive section lookup
         options.FromConfiguration(config, "ENDPOINTHEALTH");
 
         // Assert

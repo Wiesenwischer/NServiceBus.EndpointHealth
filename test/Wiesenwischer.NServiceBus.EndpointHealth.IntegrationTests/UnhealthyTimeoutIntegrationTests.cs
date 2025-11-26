@@ -43,6 +43,7 @@ public class UnhealthyTimeoutIntegrationTests : IAsyncLifetime
         var builder = new WebHostBuilder()
             .ConfigureServices(services =>
             {
+                services.AddRouting();
                 services.AddSingleton<IEndpointHealthState>(healthState);
                 services.AddHealthChecks()
                     .AddNServiceBusEndpointHealth(options =>
