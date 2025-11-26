@@ -69,12 +69,17 @@ For detailed documentation, see the [docs](docs/Home.md) or the [Wiki](../../wik
 .\publish-local.ps1
 ```
 
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for a list of changes.
+
 ## Contributing
 
 Pull requests are welcome.
 
 - Fork the repository and create a feature branch
 - Write/update tests (`dotnet test`)
+- Use [Conventional Commits](https://www.conventionalcommits.org/) for commit messages
 - Open a PR against `main`
 
 > **Note:** The `docs/` folder is automatically synced to the GitHub Wiki on push to `main`.
