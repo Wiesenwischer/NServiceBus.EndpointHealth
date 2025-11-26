@@ -27,12 +27,13 @@ if (-not $Version) {
     Write-Host "Determining version from git..." -ForegroundColor Cyan
 
     # Try to get version from latest tag
-    $tag = git describe --tags --abbrev=0 2>$null
+    $tag = $null
+    $tag = git describe --tags --abbrev=0 2>&1
     if ($LASTEXITCODE -eq 0 -and $tag -match '^v?(\d+\.\d+\.\d+.*)$') {
         $baseVersion = $Matches[1]
 
         # Check if we're exactly on the tag
-        git describe --tags --exact-match 2>$null | Out-Null
+        $null = git describe --tags --exact-match 2>&1
         if ($LASTEXITCODE -eq 0) {
             $Version = $baseVersion
             Write-Host "Using version from tag: $Version" -ForegroundColor Green
