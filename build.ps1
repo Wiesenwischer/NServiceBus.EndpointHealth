@@ -32,14 +32,19 @@ $ErrorActionPreference = 'Stop'
 if (-not $Version) {
     Write-Host "Determining version from git..." -ForegroundColor Cyan
 
+    # Temporarily allow errors for git commands (expected when no tags exist)
+    $oldErrorAction = $ErrorActionPreference
+    $ErrorActionPreference = 'SilentlyContinue'
+
     # Try to get version from latest tag
-    $tag = $null
-    $tag = git describe --tags --abbrev=0 2>&1
-    if ($LASTEXITCODE -eq 0 -and $tag -match '^v?(\d+\.\d+\.\d+.*)$') {
+    $tag = git describe --tags --abbrev=0 2>$null
+    $tagExitCode = $LASTEXITCODE
+
+    if ($tagExitCode -eq 0 -and $tag -match '^v?(\d+\.\d+\.\d+.*)$') {
         $baseVersion = $Matches[1]
 
         # Check if we're exactly on the tag
-        $null = git describe --tags --exact-match 2>&1
+        git describe --tags --exact-match 2>$null | Out-Null
         if ($LASTEXITCODE -eq 0) {
             $Version = $baseVersion
             Write-Host "Using version from tag: $Version" -ForegroundColor Green
@@ -53,6 +58,9 @@ if (-not $Version) {
         $Version = "0.0.0-local"
         Write-Host "No git tag found, using: $Version" -ForegroundColor Yellow
     }
+
+    # Restore error action preference
+    $ErrorActionPreference = $oldErrorAction
 } else {
     Write-Host "Using specified version: $Version" -ForegroundColor Green
 }
