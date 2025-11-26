@@ -43,8 +43,7 @@ coverage/
 *.coverage
 *.coveragexml
 
-# dotnet tool
-.config/
+# dotnet tool restore cache (but keep .config/dotnet-tools.json)
 
 # macOS
 .DS_Store
