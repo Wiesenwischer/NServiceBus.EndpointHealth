@@ -74,14 +74,14 @@ jobs:
         path: ./coverage/**/*.trx
         reporter: dotnet-trx
 
-    - name: Create Test Badge
+    - name: Create Unit Tests Badge
       if: github.ref == 'refs/heads/main'
       uses: schneegans/dynamic-badges-action@v1.7.0
       with:
         auth: ${{ secrets.GIST_TOKEN }}
         gistID: ${{ vars.TEST_BADGE_GIST_ID }}
-        filename: test-badge.json
-        label: tests
+        filename: unit-tests-badge.json
+        label: unit tests
         message: "${{ steps.test-reporter.outputs.passed }} passed"
         color: ${{ steps.test-reporter.outputs.failed == '0' && 'brightgreen' || 'red' }}
 
@@ -149,11 +149,23 @@ jobs:
 
     - name: Integration Test Report
       uses: dorny/test-reporter@v1
+      id: test-reporter
       if: success() || failure()
       with:
         name: Integration Tests
         path: ./test-results/*.trx
         reporter: dotnet-trx
+
+    - name: Create Integration Tests Badge
+      if: github.ref == 'refs/heads/main'
+      uses: schneegans/dynamic-badges-action@v1.7.0
+      with:
+        auth: ${{ secrets.GIST_TOKEN }}
+        gistID: ${{ vars.TEST_BADGE_GIST_ID }}
+        filename: integration-tests-badge.json
+        label: integration tests
+        message: "${{ steps.test-reporter.outputs.passed }} passed"
+        color: ${{ steps.test-reporter.outputs.failed == '0' && 'brightgreen' || 'red' }}
 
   release:
     runs-on: ubuntu-latest
