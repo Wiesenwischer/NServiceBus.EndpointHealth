@@ -15,18 +15,14 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-Write-Host "Installing/updating GitVersion tool..." -ForegroundColor Cyan
-dotnet tool install --global GitVersion.Tool --version 5.* 2>$null
-if ($LASTEXITCODE -ne 0) {
-    dotnet tool update --global GitVersion.Tool --version 5.*
-}
+Write-Host "Restoring tools..." -ForegroundColor Cyan
+dotnet tool restore
 
 Write-Host "Calculating version with GitVersion..." -ForegroundColor Cyan
-$versionJson = dotnet-gitversion /output json | ConvertFrom-Json
-$version = $versionJson.SemVer  # SemVer 2.0 format: 0.1.0-ci.10 (with dot)
-$assemblyVersion = $versionJson.AssemblySemVer
-$fileVersion = $versionJson.AssemblySemFileVer
-$infoVersion = $versionJson.InformationalVersion
+$version = dotnet gitversion /showvariable SemVer
+$assemblyVersion = dotnet gitversion /showvariable AssemblySemVer
+$fileVersion = dotnet gitversion /showvariable AssemblySemFileVer
+$infoVersion = dotnet gitversion /showvariable InformationalVersion
 
 Write-Host "Version: $version" -ForegroundColor Green
 Write-Host "Assembly Version: $assemblyVersion" -ForegroundColor Green
