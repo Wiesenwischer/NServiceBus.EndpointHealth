@@ -1,5 +1,7 @@
 #if NET9_0_OR_GREATER
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 #endif
 using NServiceBus;
 using NServiceBus.Features;
@@ -40,7 +42,13 @@ public class EndpointHealthFeature : Feature
         context.Services.AddSingleton<IEndpointHealthState>(state);
 
         context.RegisterStartupTask(provider =>
-            new HealthPingStartupTask(provider.GetRequiredService<IEndpointHealthState>()));
+        {
+            var logger = provider.GetService<ILogger<HealthPingStartupTask>>()
+                ?? NullLogger<HealthPingStartupTask>.Instance;
+            return new HealthPingStartupTask(
+                provider.GetRequiredService<IEndpointHealthState>(),
+                logger);
+        });
 #else
         // NServiceBus 7.x uses internal container separate from ASP.NET Core DI
         // External state is required via options.HealthState
@@ -62,26 +70,50 @@ public class EndpointHealthFeature : Feature
 internal class HealthPingStartupTask : FeatureStartupTask
 {
     private readonly IEndpointHealthState _state;
+#if NET9_0_OR_GREATER
+    private readonly ILogger<HealthPingStartupTask> _logger;
 
+    public HealthPingStartupTask(IEndpointHealthState state, ILogger<HealthPingStartupTask> logger)
+    {
+        _state = state;
+        _logger = logger;
+    }
+#else
     public HealthPingStartupTask(IEndpointHealthState state)
     {
         _state = state;
     }
+#endif
 
 #if NET9_0_OR_GREATER
-    protected override Task OnStart(IMessageSession session, CancellationToken cancellationToken = default)
+    protected override async Task OnStart(IMessageSession session, CancellationToken cancellationToken = default)
     {
-        // Register initial state so we're healthy from the start
-        _state.RegisterHealthPingProcessed();
+        _logger.LogInformation("EndpointHealth starting. TransportKey={TransportKey}", _state.TransportKey);
 
-        var sendOptions = new SendOptions();
-        sendOptions.RouteToThisEndpoint();
+        try
+        {
+            // Register initial state so we're healthy from the start
+            _state.RegisterHealthPingProcessed();
+            _logger.LogDebug("Initial health state registered. LastPing={LastPing}", _state.LastHealthPingProcessedUtc);
 
-        return session.Send(new HealthPing(), sendOptions, cancellationToken);
+            var sendOptions = new SendOptions();
+            sendOptions.RouteToThisEndpoint();
+
+            _logger.LogDebug("Sending initial HealthPing message");
+            await session.Send(new HealthPing(), sendOptions, cancellationToken);
+            _logger.LogInformation("Initial HealthPing sent successfully. EndpointHealth is now active.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send initial HealthPing. EndpointHealth monitoring may not work correctly. Error={Error}", ex.Message);
+            throw;
+        }
     }
 
     protected override Task OnStop(IMessageSession session, CancellationToken cancellationToken = default)
     {
+        _logger.LogInformation("EndpointHealth stopping. TransportKey={TransportKey}, LastPing={LastPing}",
+            _state.TransportKey, _state.LastHealthPingProcessedUtc);
         return Task.CompletedTask;
     }
 #else

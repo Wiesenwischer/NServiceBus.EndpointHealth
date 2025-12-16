@@ -148,4 +148,39 @@ public class EndpointHealthIntegrationTests : IAsyncLifetime
                 $"Health ping should be processed within threshold (iteration {i + 1})");
         }
     }
+
+    [Fact]
+    public async Task Endpoint_WithCustomPingInterval_RespectsConfiguredDelay()
+    {
+        // Arrange - Use a larger ping interval (5 seconds) to verify it's respected
+        var configuredInterval = TimeSpan.FromSeconds(5);
+        _healthState = new EndpointHealthState();
+        _endpoint = await StartEndpointAsync(_healthState, options =>
+        {
+            options.PingInterval = configuredInterval;
+            options.UnhealthyAfter = TimeSpan.FromSeconds(30);
+        });
+
+        // Wait for initial ping to be processed
+        await Task.Delay(TimeSpan.FromMilliseconds(500));
+        var initialPingTime = _healthState.LastHealthPingProcessedUtc;
+        initialPingTime.Should().NotBeNull("Initial ping should be registered on startup");
+
+        // Act - Wait for less than the configured interval (3 seconds < 5 seconds)
+        await Task.Delay(TimeSpan.FromSeconds(3));
+
+        // Assert - The timestamp should NOT have been updated yet (still the initial ping)
+        var timestampAfter3Seconds = _healthState.LastHealthPingProcessedUtc;
+        timestampAfter3Seconds.Should().Be(initialPingTime,
+            "Health ping should not be processed before the configured interval");
+
+        // Act - Wait for the remaining time plus buffer for delayed delivery processing
+        // SQL Server transport delayed delivery has some processing overhead
+        await Task.Delay(TimeSpan.FromSeconds(4));
+
+        // Assert - Now the timestamp should be updated (after ~7 seconds total, well past the 5s interval)
+        var timestampAfterInterval = _healthState.LastHealthPingProcessedUtc;
+        timestampAfterInterval.Should().BeAfter(initialPingTime!.Value,
+            "Health ping should be processed after the configured interval has elapsed");
+    }
 }
