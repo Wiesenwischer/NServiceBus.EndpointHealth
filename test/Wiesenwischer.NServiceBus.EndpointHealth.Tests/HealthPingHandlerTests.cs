@@ -74,4 +74,48 @@ public class HealthPingHandlerTests
         var sentMessage = context.SentMessages[0];
         sentMessage.Options.IsRoutingToThisEndpoint().Should().BeTrue();
     }
+
+    [Fact]
+    public async Task Handle_DropsStaleInstancePing()
+    {
+        // Arrange — message carries a different InstanceId than the current endpoint instance
+        var currentInstanceId = Guid.NewGuid();
+        var staleInstanceId = Guid.NewGuid();
+
+        var state = new Mock<IEndpointHealthState>();
+        state.Setup(s => s.InstanceId).Returns(currentInstanceId);
+
+        var options = new EndpointHealthOptions { PingInterval = TimeSpan.FromSeconds(30) };
+        var handler = new HealthPingHandler(state.Object, options);
+        var context = new TestableMessageHandlerContext();
+
+        // Act
+        await handler.Handle(new HealthPing { InstanceId = staleInstanceId }, context);
+
+        // Assert — stale ping is silently dropped: no reschedule, no state update
+        context.SentMessages.Should().BeEmpty();
+        state.Verify(s => s.RegisterHealthPingProcessed(), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_PropagatesInstanceIdToNextPing()
+    {
+        // Arrange — message carries the same InstanceId as the current endpoint instance
+        var instanceId = Guid.NewGuid();
+
+        var state = new Mock<IEndpointHealthState>();
+        state.Setup(s => s.InstanceId).Returns(instanceId);
+
+        var options = new EndpointHealthOptions { PingInterval = TimeSpan.FromSeconds(30) };
+        var handler = new HealthPingHandler(state.Object, options);
+        var context = new TestableMessageHandlerContext();
+
+        // Act
+        await handler.Handle(new HealthPing { InstanceId = instanceId }, context);
+
+        // Assert — the next scheduled ping carries the same InstanceId
+        context.SentMessages.Should().HaveCount(1);
+        var nextPing = context.SentMessages[0].Message.Should().BeOfType<HealthPing>().Subject;
+        nextPing.InstanceId.Should().Be(instanceId);
+    }
 }

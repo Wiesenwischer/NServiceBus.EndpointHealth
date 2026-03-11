@@ -99,8 +99,8 @@ internal class HealthPingStartupTask : FeatureStartupTask
             var sendOptions = new SendOptions();
             sendOptions.RouteToThisEndpoint();
 
-            _logger.LogDebug("Sending initial HealthPing message");
-            await session.Send(new HealthPing(), sendOptions, cancellationToken);
+            _logger.LogDebug("Sending initial HealthPing message. InstanceId={InstanceId}", _state.InstanceId);
+            await session.Send(new HealthPing { InstanceId = _state.InstanceId }, sendOptions, cancellationToken);
             _logger.LogInformation("Initial HealthPing sent successfully. EndpointHealth is now active.");
         }
         catch (Exception ex)
@@ -125,7 +125,7 @@ internal class HealthPingStartupTask : FeatureStartupTask
         var sendOptions = new SendOptions();
         sendOptions.RouteToThisEndpoint();
 
-        return session.Send(new HealthPing(), sendOptions);
+        return session.Send(new HealthPing { InstanceId = _state.InstanceId }, sendOptions);
     }
 
     protected override Task OnStop(IMessageSession session)

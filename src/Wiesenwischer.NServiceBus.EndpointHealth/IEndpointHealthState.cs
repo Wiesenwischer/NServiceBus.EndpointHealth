@@ -6,6 +6,12 @@ namespace Wiesenwischer.NServiceBus.EndpointHealth;
 public interface IEndpointHealthState
 {
     /// <summary>
+    /// Gets the unique ID of this endpoint instance, generated fresh on every startup.
+    /// Used to identify and discard stale health ping chains from previous container runs.
+    /// </summary>
+    Guid InstanceId { get; }
+
+    /// <summary>
     /// Gets the optional logical key for the transport cluster this endpoint belongs to.
     /// </summary>
     /// <remarks>
