@@ -37,12 +37,12 @@ public class HealthPingHandler : IHandleMessages<HealthPing>
     public async Task Handle(HealthPing message, IMessageHandlerContext context)
     {
         var messageId = context.MessageId;
-        _logger.LogDebug("HealthPing received. MessageId={MessageId}, TransportKey={TransportKey}, InstanceId={InstanceId}",
-            messageId, _state.TransportKey, message.InstanceId);
+        _logger.LogInformation("HealthPing received. MessageId={MessageId}, TransportKey={TransportKey}, MessageInstanceId={MessageInstanceId}, StateInstanceId={StateInstanceId}",
+            messageId, _state.TransportKey, message.InstanceId, _state.InstanceId);
 
         if (message.InstanceId != _state.InstanceId)
         {
-            _logger.LogDebug(
+            _logger.LogWarning(
                 "Dropping stale HealthPing from instance {StaleId}, current instance is {CurrentId}. MessageId={MessageId}",
                 message.InstanceId, _state.InstanceId, messageId);
             return;
@@ -51,19 +51,16 @@ public class HealthPingHandler : IHandleMessages<HealthPing>
         try
         {
             _state.RegisterHealthPingProcessed();
-            _logger.LogDebug("HealthPing processed, state updated. LastPing={LastPing}",
-                _state.LastHealthPingProcessedUtc);
+            _logger.LogInformation("HealthPing processed, scheduling next in {Delay}. LastPing={LastPing}, MessageId={MessageId}",
+                _options.PingInterval, _state.LastHealthPingProcessedUtc, messageId);
 
             var sendOptions = new SendOptions();
             sendOptions.DelayDeliveryWith(_options.PingInterval);
             sendOptions.RouteToThisEndpoint();
 
-            _logger.LogDebug("Sending next HealthPing with delay {Delay}. MessageId={MessageId}",
-                _options.PingInterval, messageId);
-
             await context.Send(new HealthPing { InstanceId = _state.InstanceId }, sendOptions);
 
-            _logger.LogDebug("Next HealthPing sent successfully. MessageId={MessageId}", messageId);
+            _logger.LogInformation("Next HealthPing sent successfully. MessageId={MessageId}", messageId);
         }
         catch (Exception ex)
         {
