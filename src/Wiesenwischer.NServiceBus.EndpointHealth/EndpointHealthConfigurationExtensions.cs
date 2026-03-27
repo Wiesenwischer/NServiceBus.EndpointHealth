@@ -57,6 +57,11 @@ public static class EndpointHealthConfigurationExtensions
         settings.Set(options);
         configuration.EnableFeature<EndpointHealthFeature>();
 
+        // Ensure the HealthPing type is recognized as a message even when custom
+        // conventions (DefiningMessagesAs) don't match the EndpointHealth namespace.
+        // IMessageConvention is additive and does not override existing conventions.
+        configuration.Conventions().Add(new HealthPingMessageConvention());
+
         return configuration;
     }
 
