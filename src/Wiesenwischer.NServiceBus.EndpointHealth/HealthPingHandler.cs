@@ -48,25 +48,8 @@ public class HealthPingHandler : IHandleMessages<HealthPing>
             return;
         }
 
-        try
-        {
-            _state.RegisterHealthPingProcessed();
-            _logger.LogInformation("HealthPing processed, scheduling next in {Delay}. LastPing={LastPing}, MessageId={MessageId}",
-                _options.PingInterval, _state.LastHealthPingProcessedUtc, messageId);
-
-            var sendOptions = new SendOptions();
-            sendOptions.DelayDeliveryWith(_options.PingInterval);
-            sendOptions.RouteToThisEndpoint();
-
-            await context.Send(new HealthPing { InstanceId = _state.InstanceId }, sendOptions);
-
-            _logger.LogInformation("Next HealthPing sent successfully. MessageId={MessageId}", messageId);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to process HealthPing or send next ping. MessageId={MessageId}, Error={Error}",
-                messageId, ex.Message);
-            throw;
-        }
+        _state.RegisterHealthPingProcessed();
+        _logger.LogInformation("HealthPing processed. LastPing={LastPing}, MessageId={MessageId}",
+            _state.LastHealthPingProcessedUtc, messageId);
     }
 }

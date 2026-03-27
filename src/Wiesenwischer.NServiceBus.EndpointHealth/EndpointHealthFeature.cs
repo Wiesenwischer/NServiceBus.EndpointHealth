@@ -41,6 +41,10 @@ public class EndpointHealthFeature : Feature
         context.Services.AddSingleton(options);
         context.Services.AddSingleton<IEndpointHealthState>(state);
 
+        // Register background service that sends periodic HealthPing messages
+        // Uses a simple timer instead of NServiceBus delayed delivery
+        context.Services.AddHostedService<HealthPingBackgroundService>();
+
         context.RegisterStartupTask(provider =>
         {
             var logger = provider.GetService<ILogger<HealthPingStartupTask>>()
@@ -86,28 +90,17 @@ internal class HealthPingStartupTask : FeatureStartupTask
 #endif
 
 #if NET9_0_OR_GREATER
-    protected override async Task OnStart(IMessageSession session, CancellationToken cancellationToken = default)
+    protected override Task OnStart(IMessageSession session, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("EndpointHealth starting. TransportKey={TransportKey}", _state.TransportKey);
 
-        try
-        {
-            // Register initial state so we're healthy from the start
-            _state.RegisterHealthPingProcessed();
-            _logger.LogDebug("Initial health state registered. LastPing={LastPing}", _state.LastHealthPingProcessedUtc);
+        // Register initial state so we're healthy from the start
+        // The HealthPingBackgroundService will send periodic pings
+        _state.RegisterHealthPingProcessed();
+        _logger.LogInformation("EndpointHealth initialized. InstanceId={InstanceId}. Background service will send periodic pings.",
+            _state.InstanceId);
 
-            var sendOptions = new SendOptions();
-            sendOptions.RouteToThisEndpoint();
-
-            _logger.LogDebug("Sending initial HealthPing message. InstanceId={InstanceId}", _state.InstanceId);
-            await session.Send(new HealthPing { InstanceId = _state.InstanceId }, sendOptions, cancellationToken);
-            _logger.LogInformation("Initial HealthPing sent successfully. EndpointHealth is now active.");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to send initial HealthPing. EndpointHealth monitoring may not work correctly. Error={Error}", ex.Message);
-            throw;
-        }
+        return Task.CompletedTask;
     }
 
     protected override Task OnStop(IMessageSession session, CancellationToken cancellationToken = default)

@@ -23,9 +23,9 @@ public class HealthPingHandlerTests
     }
 
     [Fact]
-    public async Task Handle_SchedulesNextHealthPing()
+    public async Task Handle_DoesNotSendNextPing()
     {
-        // Arrange
+        // Arrange - handler no longer schedules the next ping (background service does that)
         var state = new Mock<IEndpointHealthState>();
         var options = new EndpointHealthOptions { PingInterval = TimeSpan.FromSeconds(30) };
         var handler = new HealthPingHandler(state.Object, options);
@@ -34,45 +34,8 @@ public class HealthPingHandlerTests
         // Act
         await handler.Handle(new HealthPing(), context);
 
-        // Assert
-        context.SentMessages.Should().HaveCount(1);
-        var sentMessage = context.SentMessages[0];
-        sentMessage.Message.Should().BeOfType<HealthPing>();
-    }
-
-    [Fact]
-    public async Task Handle_SchedulesNextPingWithConfiguredInterval()
-    {
-        // Arrange
-        var state = new Mock<IEndpointHealthState>();
-        var pingInterval = TimeSpan.FromSeconds(45);
-        var options = new EndpointHealthOptions { PingInterval = pingInterval };
-        var handler = new HealthPingHandler(state.Object, options);
-        var context = new TestableMessageHandlerContext();
-
-        // Act
-        await handler.Handle(new HealthPing(), context);
-
-        // Assert
-        var sentMessage = context.SentMessages[0];
-        sentMessage.Options.GetDeliveryDelay().Should().Be(pingInterval);
-    }
-
-    [Fact]
-    public async Task Handle_RoutesToThisEndpoint()
-    {
-        // Arrange
-        var state = new Mock<IEndpointHealthState>();
-        var options = new EndpointHealthOptions();
-        var handler = new HealthPingHandler(state.Object, options);
-        var context = new TestableMessageHandlerContext();
-
-        // Act
-        await handler.Handle(new HealthPing(), context);
-
-        // Assert
-        var sentMessage = context.SentMessages[0];
-        sentMessage.Options.IsRoutingToThisEndpoint().Should().BeTrue();
+        // Assert - no messages sent from handler
+        context.SentMessages.Should().BeEmpty();
     }
 
     [Fact]
@@ -92,30 +55,8 @@ public class HealthPingHandlerTests
         // Act
         await handler.Handle(new HealthPing { InstanceId = staleInstanceId }, context);
 
-        // Assert — stale ping is silently dropped: no reschedule, no state update
+        // Assert — stale ping is silently dropped: no state update
         context.SentMessages.Should().BeEmpty();
         state.Verify(s => s.RegisterHealthPingProcessed(), Times.Never);
-    }
-
-    [Fact]
-    public async Task Handle_PropagatesInstanceIdToNextPing()
-    {
-        // Arrange — message carries the same InstanceId as the current endpoint instance
-        var instanceId = Guid.NewGuid();
-
-        var state = new Mock<IEndpointHealthState>();
-        state.Setup(s => s.InstanceId).Returns(instanceId);
-
-        var options = new EndpointHealthOptions { PingInterval = TimeSpan.FromSeconds(30) };
-        var handler = new HealthPingHandler(state.Object, options);
-        var context = new TestableMessageHandlerContext();
-
-        // Act
-        await handler.Handle(new HealthPing { InstanceId = instanceId }, context);
-
-        // Assert — the next scheduled ping carries the same InstanceId
-        context.SentMessages.Should().HaveCount(1);
-        var nextPing = context.SentMessages[0].Message.Should().BeOfType<HealthPing>().Subject;
-        nextPing.InstanceId.Should().Be(instanceId);
     }
 }
