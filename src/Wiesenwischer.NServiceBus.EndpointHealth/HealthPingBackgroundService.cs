@@ -45,7 +45,7 @@ internal class HealthPingBackgroundService : BackgroundService
                 sendOptions.RouteToThisEndpoint();
 
                 await _messageSession.Send(new HealthPing { InstanceId = _state.InstanceId }, sendOptions, stoppingToken);
-                _logger.LogDebug("HealthPing sent by background service. InstanceId={InstanceId}", _state.InstanceId);
+                _logger.LogInformation("HealthPing sent by background service. InstanceId={InstanceId}", _state.InstanceId);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
