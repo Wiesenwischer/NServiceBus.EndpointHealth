@@ -34,6 +34,16 @@ public class EndpointHealthOptions
     public TimeSpan PingInterval { get; set; } = TimeSpan.FromSeconds(60);
 
     /// <summary>
+    /// Gets or sets the delay before the background service sends its first health ping
+    /// after the endpoint starts. Default is 5 seconds.
+    /// </summary>
+    /// <remarks>
+    /// Allows the endpoint to fully initialize before the first ping is dispatched.
+    /// Set to <see cref="TimeSpan.Zero"/> in tests where a fast first ping is desired.
+    /// </remarks>
+    public TimeSpan StartupDelay { get; set; } = TimeSpan.FromSeconds(5);
+
+    /// <summary>
     /// Gets or sets the time after which the endpoint is considered unhealthy
     /// if no health ping has been processed. Default is 3 minutes.
     /// </summary>

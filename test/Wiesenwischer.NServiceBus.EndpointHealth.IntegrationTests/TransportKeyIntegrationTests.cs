@@ -52,6 +52,7 @@ public class TransportKeyIntegrationTests : IAsyncLifetime
             options.TransportKey = transportKey;
             options.PingInterval = TimeSpan.FromSeconds(1);
             options.UnhealthyAfter = TimeSpan.FromSeconds(5);
+            options.StartupDelay = TimeSpan.Zero;
         });
 
         endpointConfig.Recoverability()

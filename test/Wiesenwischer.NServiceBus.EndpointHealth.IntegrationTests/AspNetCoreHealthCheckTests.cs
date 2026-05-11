@@ -90,6 +90,7 @@ public class AspNetCoreHealthCheckTests : IAsyncLifetime
         {
             options.PingInterval = TimeSpan.FromSeconds(1);
             options.UnhealthyAfter = TimeSpan.FromSeconds(5);
+            options.StartupDelay = TimeSpan.Zero;
         });
 
         endpointConfig.Recoverability()

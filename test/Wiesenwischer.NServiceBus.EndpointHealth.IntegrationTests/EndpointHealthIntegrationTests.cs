@@ -70,6 +70,7 @@ public class EndpointHealthIntegrationTests : IAsyncLifetime
         {
             options.PingInterval = TimeSpan.FromSeconds(2);
             options.UnhealthyAfter = TimeSpan.FromSeconds(10);
+            options.StartupDelay = TimeSpan.Zero;
             configureOptions?.Invoke(options);
         });
 

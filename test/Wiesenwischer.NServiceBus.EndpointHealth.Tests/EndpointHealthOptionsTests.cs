@@ -51,6 +51,29 @@ public class EndpointHealthOptionsTests
     }
 
     [Fact]
+    public void DefaultStartupDelay_Is5Seconds()
+    {
+        // Arrange & Act
+        var options = new EndpointHealthOptions();
+
+        // Assert
+        options.StartupDelay.Should().Be(TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public void StartupDelay_CanBeCustomized()
+    {
+        // Arrange & Act
+        var options = new EndpointHealthOptions
+        {
+            StartupDelay = TimeSpan.Zero
+        };
+
+        // Assert
+        options.StartupDelay.Should().Be(TimeSpan.Zero);
+    }
+
+    [Fact]
     public void DefaultTransportKey_IsNull()
     {
         // Arrange & Act

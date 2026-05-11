@@ -31,8 +31,10 @@ internal class HealthPingBackgroundService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        // Wait for the endpoint to fully start
-        await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
+        if (_options.StartupDelay > TimeSpan.Zero)
+        {
+            await Task.Delay(_options.StartupDelay, stoppingToken);
+        }
 
         _logger.LogInformation("HealthPing background service started. Interval={Interval}, InstanceId={InstanceId}",
             _options.PingInterval, _state.InstanceId);

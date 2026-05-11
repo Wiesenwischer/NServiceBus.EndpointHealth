@@ -270,6 +270,7 @@ public class UnhealthyTimeoutIntegrationTests : IAsyncLifetime
         {
             options.PingInterval = TimeSpan.FromSeconds(1);
             options.UnhealthyAfter = unhealthyAfter;
+            options.StartupDelay = TimeSpan.Zero;
         });
 
         endpointConfig.Recoverability()
