@@ -34,7 +34,7 @@ public class HealthPingHandler : IHandleMessages<HealthPing>
     /// Handles the health ping message by registering it was processed and scheduling the next ping.
     /// Stale pings from previous container instances are silently dropped without rescheduling.
     /// </summary>
-    public async Task Handle(HealthPing message, IMessageHandlerContext context)
+    public Task Handle(HealthPing message, IMessageHandlerContext context)
     {
         var messageId = context.MessageId;
         _logger.LogInformation("HealthPing received. MessageId={MessageId}, TransportKey={TransportKey}, MessageInstanceId={MessageInstanceId}, StateInstanceId={StateInstanceId}",
@@ -45,11 +45,12 @@ public class HealthPingHandler : IHandleMessages<HealthPing>
             _logger.LogWarning(
                 "Dropping stale HealthPing from instance {StaleId}, current instance is {CurrentId}. MessageId={MessageId}",
                 message.InstanceId, _state.InstanceId, messageId);
-            return;
+            return Task.CompletedTask;
         }
 
         _state.RegisterHealthPingProcessed();
         _logger.LogInformation("HealthPing processed. LastPing={LastPing}, MessageId={MessageId}",
             _state.LastHealthPingProcessedUtc, messageId);
+        return Task.CompletedTask;
     }
 }
