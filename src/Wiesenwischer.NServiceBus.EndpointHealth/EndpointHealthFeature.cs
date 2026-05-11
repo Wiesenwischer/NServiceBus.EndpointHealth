@@ -45,17 +45,11 @@ public class EndpointHealthFeature : Feature
         // (synthetic HealthPing stuck behind business messages) cannot trigger a false stuck-pump alert.
         context.Pipeline.Register(new HealthSignalBehavior(state), "Updates endpoint health state on every incoming message.");
 
-        // Register background service that sends periodic HealthPing messages
-        // Uses a simple timer instead of NServiceBus delayed delivery
-        context.Services.AddHostedService<HealthPingBackgroundService>();
-
         context.RegisterStartupTask(provider =>
         {
             var logger = provider.GetService<ILogger<HealthPingStartupTask>>()
                 ?? NullLogger<HealthPingStartupTask>.Instance;
-            return new HealthPingStartupTask(
-                provider.GetRequiredService<IEndpointHealthState>(),
-                logger);
+            return new HealthPingStartupTask(state, options, logger);
         });
 #else
         // NServiceBus 7.x uses internal container separate from ASP.NET Core DI
@@ -71,29 +65,35 @@ public class EndpointHealthFeature : Feature
         // (synthetic HealthPing stuck behind business messages) cannot trigger a false stuck-pump alert.
         context.Pipeline.Register(new HealthSignalBehavior(state), "Updates endpoint health state on every incoming message.");
 
-        context.RegisterStartupTask(new HealthPingStartupTask(state));
+        context.RegisterStartupTask(new HealthPingStartupTask(state, options));
 #endif
     }
 }
 
 /// <summary>
-/// Startup task that sends the initial health ping when the endpoint starts.
+/// Startup task that registers the initial health ping and runs the periodic ping loop
+/// while the endpoint is active.
 /// </summary>
 internal class HealthPingStartupTask : FeatureStartupTask
 {
     private readonly IEndpointHealthState _state;
+    private readonly EndpointHealthOptions _options;
+    private CancellationTokenSource? _cts;
+    private Task? _pingLoop;
 #if NET9_0_OR_GREATER
     private readonly ILogger<HealthPingStartupTask> _logger;
 
-    public HealthPingStartupTask(IEndpointHealthState state, ILogger<HealthPingStartupTask> logger)
+    public HealthPingStartupTask(IEndpointHealthState state, EndpointHealthOptions options, ILogger<HealthPingStartupTask> logger)
     {
         _state = state;
+        _options = options;
         _logger = logger;
     }
 #else
-    public HealthPingStartupTask(IEndpointHealthState state)
+    public HealthPingStartupTask(IEndpointHealthState state, EndpointHealthOptions options)
     {
         _state = state;
+        _options = options;
     }
 #endif
 
@@ -103,35 +103,105 @@ internal class HealthPingStartupTask : FeatureStartupTask
         _logger.LogInformation("EndpointHealth starting. TransportKey={TransportKey}", _state.TransportKey);
 
         // Register initial state so we're healthy from the start
-        // The HealthPingBackgroundService will send periodic pings
         _state.RegisterHealthPingProcessed();
-        _logger.LogInformation("EndpointHealth initialized. InstanceId={InstanceId}. Background service will send periodic pings.",
-            _state.InstanceId);
+        _logger.LogInformation("EndpointHealth initialized. InstanceId={InstanceId}. Interval={Interval}.",
+            _state.InstanceId, _options.PingInterval);
 
+        _cts = new CancellationTokenSource();
+        _pingLoop = Task.Run(() => SendPingsAsync(session, _cts.Token));
         return Task.CompletedTask;
     }
 
-    protected override Task OnStop(IMessageSession session, CancellationToken cancellationToken = default)
+    private async Task SendPingsAsync(IMessageSession session, CancellationToken ct)
     {
+        if (_options.StartupDelay > TimeSpan.Zero)
+        {
+            try { await Task.Delay(_options.StartupDelay, ct); }
+            catch (OperationCanceledException) { return; }
+        }
+
+        while (!ct.IsCancellationRequested)
+        {
+            try
+            {
+                var sendOptions = new SendOptions();
+                sendOptions.RouteToThisEndpoint();
+                await session.Send(new HealthPing { InstanceId = _state.InstanceId }, sendOptions, ct);
+                _logger.LogInformation("HealthPing sent. InstanceId={InstanceId}", _state.InstanceId);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "HealthPing send failed; retrying in {Interval}", _options.PingInterval);
+            }
+
+            try { await Task.Delay(_options.PingInterval, ct); }
+            catch (OperationCanceledException) { break; }
+        }
+    }
+
+    protected override async Task OnStop(IMessageSession session, CancellationToken cancellationToken = default)
+    {
+        _cts?.Cancel();
+        if (_pingLoop != null)
+        {
+            try { await _pingLoop; } catch { /* shutdown */ }
+        }
+        _cts?.Dispose();
         _logger.LogInformation("EndpointHealth stopping. TransportKey={TransportKey}, LastPing={LastPing}",
             _state.TransportKey, _state.LastHealthPingProcessedUtc);
-        return Task.CompletedTask;
     }
 #else
     protected override Task OnStart(IMessageSession session)
     {
-        // Register initial state so we're healthy from the start
         _state.RegisterHealthPingProcessed();
 
-        var sendOptions = new SendOptions();
-        sendOptions.RouteToThisEndpoint();
-
-        return session.Send(new HealthPing { InstanceId = _state.InstanceId }, sendOptions);
+        _cts = new CancellationTokenSource();
+        _pingLoop = Task.Run(() => SendPingsAsync(session, _cts.Token));
+        return Task.CompletedTask;
     }
 
-    protected override Task OnStop(IMessageSession session)
+    private async Task SendPingsAsync(IMessageSession session, CancellationToken ct)
     {
-        return Task.CompletedTask;
+        if (_options.StartupDelay > TimeSpan.Zero)
+        {
+            try { await Task.Delay(_options.StartupDelay, ct); }
+            catch (OperationCanceledException) { return; }
+        }
+
+        while (!ct.IsCancellationRequested)
+        {
+            try
+            {
+                var sendOptions = new SendOptions();
+                sendOptions.RouteToThisEndpoint();
+                await session.Send(new HealthPing { InstanceId = _state.InstanceId }, sendOptions);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                break;
+            }
+            catch
+            {
+                // Swallow and retry next interval.
+            }
+
+            try { await Task.Delay(_options.PingInterval, ct); }
+            catch (OperationCanceledException) { break; }
+        }
+    }
+
+    protected override async Task OnStop(IMessageSession session)
+    {
+        _cts?.Cancel();
+        if (_pingLoop != null)
+        {
+            try { await _pingLoop; } catch { /* shutdown */ }
+        }
+        _cts?.Dispose();
     }
 #endif
 }

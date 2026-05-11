@@ -1,5 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using NServiceBus;
 using Wiesenwischer.NServiceBus.EndpointHealth;
 
@@ -9,7 +8,7 @@ namespace Wiesenwischer.NServiceBus.EndpointHealth.IntegrationTests;
 public class EndpointHealthIntegrationTests : IAsyncLifetime
 {
     private readonly SqlServerFixture _fixture;
-    private IHost? _host;
+    private IEndpointInstance? _endpoint;
     private EndpointHealthState? _healthState;
 
     public EndpointHealthIntegrationTests(SqlServerFixture fixture)
@@ -25,10 +24,9 @@ public class EndpointHealthIntegrationTests : IAsyncLifetime
 
     public async Task DisposeAsync()
     {
-        if (_host != null)
+        if (_endpoint != null)
         {
-            await _host.StopAsync();
-            _host.Dispose();
+            await _endpoint.Stop();
         }
     }
 
@@ -43,47 +41,39 @@ public class EndpointHealthIntegrationTests : IAsyncLifetime
         await command.ExecuteScalarAsync();
     }
 
-    // Use a generic host so the HealthPingBackgroundService (an IHostedService)
-    // actually starts. Endpoint.Start() in isolation does not run hosted services.
-    private async Task<IHost> StartEndpointAsync(
+    private async Task<IEndpointInstance> StartEndpointAsync(
         EndpointHealthState healthState,
         Action<EndpointHealthOptions>? configureOptions = null)
     {
-        var hostBuilder = Host.CreateDefaultBuilder()
-            .ConfigureServices(services =>
-            {
-                services.AddSingleton<IEndpointHealthState>(healthState);
-                services.AddSingleton(healthState);
-            })
-            .UseNServiceBus(_ =>
-            {
-                var endpointConfig = new EndpointConfiguration($"IntegrationTest.Endpoint.{Guid.NewGuid():N}");
+        var endpointConfig = new EndpointConfiguration($"IntegrationTest.Endpoint.{Guid.NewGuid():N}");
 
-                var transport = endpointConfig.UseTransport<SqlServerTransport>();
-                transport.ConnectionString(_fixture.ConnectionString);
-                transport.DefaultSchema("dbo");
+        var transport = endpointConfig.UseTransport<SqlServerTransport>();
+        transport.ConnectionString(_fixture.ConnectionString);
+        transport.DefaultSchema("dbo");
 
-                endpointConfig.UsePersistence<LearningPersistence>();
-                endpointConfig.EnableInstallers();
+        endpointConfig.UsePersistence<LearningPersistence>();
+        endpointConfig.EnableInstallers();
 
-                endpointConfig.EnableEndpointHealth(options =>
-                {
-                    options.PingInterval = TimeSpan.FromSeconds(2);
-                    options.UnhealthyAfter = TimeSpan.FromSeconds(10);
-                    options.StartupDelay = TimeSpan.Zero;
-                    configureOptions?.Invoke(options);
-                });
+        endpointConfig.RegisterComponents(services =>
+        {
+            services.AddSingleton<IEndpointHealthState>(healthState);
+            services.AddSingleton(healthState);
+        });
 
-                endpointConfig.Recoverability()
-                    .Immediate(i => i.NumberOfRetries(0))
-                    .Delayed(d => d.NumberOfRetries(0));
+        endpointConfig.EnableEndpointHealth(options =>
+        {
+            options.HealthState = healthState;
+            options.PingInterval = TimeSpan.FromSeconds(2);
+            options.UnhealthyAfter = TimeSpan.FromSeconds(10);
+            options.StartupDelay = TimeSpan.Zero;
+            configureOptions?.Invoke(options);
+        });
 
-                return endpointConfig;
-            });
+        endpointConfig.Recoverability()
+            .Immediate(i => i.NumberOfRetries(0))
+            .Delayed(d => d.NumberOfRetries(0));
 
-        var host = hostBuilder.Build();
-        await host.StartAsync();
-        return host;
+        return await Endpoint.Start(endpointConfig);
     }
 
     [Fact]
@@ -93,7 +83,7 @@ public class EndpointHealthIntegrationTests : IAsyncLifetime
         _healthState = new EndpointHealthState();
 
         // Act
-        _host = await StartEndpointAsync(_healthState);
+        _endpoint = await StartEndpointAsync(_healthState);
 
         // Allow startup task to complete
         await Task.Delay(TimeSpan.FromMilliseconds(500));
@@ -108,7 +98,7 @@ public class EndpointHealthIntegrationTests : IAsyncLifetime
     {
         // Arrange
         _healthState = new EndpointHealthState();
-        _host = await StartEndpointAsync(_healthState, options =>
+        _endpoint = await StartEndpointAsync(_healthState, options =>
         {
             options.PingInterval = TimeSpan.FromSeconds(1);
         });
@@ -131,7 +121,7 @@ public class EndpointHealthIntegrationTests : IAsyncLifetime
     {
         // Arrange
         _healthState = new EndpointHealthState();
-        _host = await StartEndpointAsync(_healthState, options =>
+        _endpoint = await StartEndpointAsync(_healthState, options =>
         {
             options.PingInterval = TimeSpan.FromSeconds(1);
             options.UnhealthyAfter = TimeSpan.FromSeconds(5);
@@ -159,7 +149,7 @@ public class EndpointHealthIntegrationTests : IAsyncLifetime
         // Arrange - Use a larger ping interval (5 seconds) to verify it's respected
         var configuredInterval = TimeSpan.FromSeconds(5);
         _healthState = new EndpointHealthState();
-        _host = await StartEndpointAsync(_healthState, options =>
+        _endpoint = await StartEndpointAsync(_healthState, options =>
         {
             options.PingInterval = configuredInterval;
             options.UnhealthyAfter = TimeSpan.FromSeconds(30);
