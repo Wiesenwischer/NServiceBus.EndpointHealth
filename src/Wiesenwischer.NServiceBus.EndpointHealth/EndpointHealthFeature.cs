@@ -41,6 +41,10 @@ public class EndpointHealthFeature : Feature
         context.Services.AddSingleton(options);
         context.Services.AddSingleton<IEndpointHealthState>(state);
 
+        // Treat any processed message as a health signal so a backlogged input queue
+        // (synthetic HealthPing stuck behind business messages) cannot trigger a false stuck-pump alert.
+        context.Pipeline.Register(new HealthSignalBehavior(state), "Updates endpoint health state on every incoming message.");
+
         // Register background service that sends periodic HealthPing messages
         // Uses a simple timer instead of NServiceBus delayed delivery
         context.Services.AddHostedService<HealthPingBackgroundService>();
@@ -62,6 +66,10 @@ public class EndpointHealthFeature : Feature
                 "Create an EndpointHealthState instance, register it in ASP.NET Core DI, and set it on options.HealthState.");
         context.Container.RegisterSingleton(options);
         context.Container.RegisterSingleton<IEndpointHealthState>(state);
+
+        // Treat any processed message as a health signal so a backlogged input queue
+        // (synthetic HealthPing stuck behind business messages) cannot trigger a false stuck-pump alert.
+        context.Pipeline.Register(new HealthSignalBehavior(state), "Updates endpoint health state on every incoming message.");
 
         context.RegisterStartupTask(new HealthPingStartupTask(state));
 #endif
