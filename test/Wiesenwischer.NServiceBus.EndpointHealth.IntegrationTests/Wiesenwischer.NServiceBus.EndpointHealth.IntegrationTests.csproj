@@ -15,6 +15,7 @@
     <PackageReference Include="FluentAssertions" />
     <PackageReference Include="Testcontainers.MsSql" />
     <PackageReference Include="NServiceBus.Transport.SqlServer" />
+    <PackageReference Include="NServiceBus.Extensions.Hosting" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="Microsoft.Data.SqlClient" />
   </ItemGroup>
