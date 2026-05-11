@@ -49,7 +49,11 @@ public class EndpointHealthFeature : Feature
         {
             var logger = provider.GetService<ILogger<HealthPingStartupTask>>()
                 ?? NullLogger<HealthPingStartupTask>.Instance;
-            return new HealthPingStartupTask(state, options, logger);
+            // Resolve from DI so endpoints that register a shared IEndpointHealthState via
+            // RegisterComponents (after Feature.Setup) get the same instance the rest of
+            // the app sees, not the one created locally above.
+            var resolvedState = provider.GetRequiredService<IEndpointHealthState>();
+            return new HealthPingStartupTask(resolvedState, options, logger);
         });
 #else
         // NServiceBus 7.x uses internal container separate from ASP.NET Core DI

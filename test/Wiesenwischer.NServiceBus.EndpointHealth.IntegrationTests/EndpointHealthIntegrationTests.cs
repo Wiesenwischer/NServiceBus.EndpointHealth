@@ -155,26 +155,21 @@ public class EndpointHealthIntegrationTests : IAsyncLifetime
             options.UnhealthyAfter = TimeSpan.FromSeconds(30);
         });
 
-        // Wait for initial ping to be processed
-        await Task.Delay(TimeSpan.FromMilliseconds(500));
-        var initialPingTime = _healthState.LastHealthPingProcessedUtc;
-        initialPingTime.Should().NotBeNull("Initial ping should be registered on startup");
+        // Wait long enough for the first periodic ping to be sent and delivered through the transport
+        await Task.Delay(TimeSpan.FromSeconds(2));
+        var firstPingTime = _healthState.LastHealthPingProcessedUtc;
+        firstPingTime.Should().NotBeNull("First periodic ping should be processed shortly after startup");
 
-        // Act - Wait for less than the configured interval (3 seconds < 5 seconds)
-        await Task.Delay(TimeSpan.FromSeconds(3));
+        // Within the configured interval, no new ping should have been processed
+        await Task.Delay(TimeSpan.FromSeconds(2)); // total ~4s, still less than 5s interval
+        var timestampWithinInterval = _healthState.LastHealthPingProcessedUtc;
+        timestampWithinInterval.Should().Be(firstPingTime,
+            "Health ping should not be processed before the configured interval has elapsed");
 
-        // Assert - The timestamp should NOT have been updated yet (still the initial ping)
-        var timestampAfter3Seconds = _healthState.LastHealthPingProcessedUtc;
-        timestampAfter3Seconds.Should().Be(initialPingTime,
-            "Health ping should not be processed before the configured interval");
-
-        // Act - Wait for the remaining time plus buffer for delayed delivery processing
-        // SQL Server transport delayed delivery has some processing overhead
-        await Task.Delay(TimeSpan.FromSeconds(4));
-
-        // Assert - Now the timestamp should be updated (after ~7 seconds total, well past the 5s interval)
+        // Past the configured interval, the next ping should have been processed
+        await Task.Delay(TimeSpan.FromSeconds(5)); // total ~9s, past the 5s interval
         var timestampAfterInterval = _healthState.LastHealthPingProcessedUtc;
-        timestampAfterInterval.Should().BeAfter(initialPingTime!.Value,
+        timestampAfterInterval.Should().BeAfter(firstPingTime!.Value,
             "Health ping should be processed after the configured interval has elapsed");
     }
 }
