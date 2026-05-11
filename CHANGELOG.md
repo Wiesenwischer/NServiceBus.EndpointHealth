@@ -5,27 +5,6 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.2.2](https://github.com/Wiesenwischer/NServiceBus.EndpointHealth/compare/v0.2.1...v0.2.2) (2026-05-11)
-
-
-### Features
-
-* replace delayed delivery with background service for HealthPing ([24c73a9](https://github.com/Wiesenwischer/NServiceBus.EndpointHealth/commit/24c73a923c05cc79f9f0ac1263c20c532fc644ab))
-* treat any processed message as endpoint health signal ([5b37241](https://github.com/Wiesenwischer/NServiceBus.EndpointHealth/commit/5b37241877c8e4266f7e47102d5b7773d50f0280))
-
-
-### Bug Fixes
-
-* **healthping:** drop stale pings from previous container instances via InstanceId ([34c871d](https://github.com/Wiesenwischer/NServiceBus.EndpointHealth/commit/34c871df816241bc27d097197b96c4b90f229388))
-* log HealthPing handler at Information level for debugging ([2da0a31](https://github.com/Wiesenwischer/NServiceBus.EndpointHealth/commit/2da0a311d114e75f8d9bc6714f29304dc8f6e85b))
-* log HealthPing sends at Information level ([e9d93fb](https://github.com/Wiesenwischer/NServiceBus.EndpointHealth/commit/e9d93fbaac20f61dd402cd76242bc7ee5189fbec))
-* make HealthPing startup delay configurable ([f7cadd0](https://github.com/Wiesenwischer/NServiceBus.EndpointHealth/commit/f7cadd0b0d02c12a8a7e51bbce3d054dcbd65a23))
-* register HealthPing via IMessageConvention to bypass assembly scanning issues ([3049308](https://github.com/Wiesenwischer/NServiceBus.EndpointHealth/commit/30493081b3307a7d7be435f948a99d07125daf97))
-* remove async modifier from HealthPing handler without awaits ([b06949e](https://github.com/Wiesenwischer/NServiceBus.EndpointHealth/commit/b06949ef74cfe58f926156003e654f8193c066b4))
-* resolve health state from DI in StartupTask factory ([d2b475c](https://github.com/Wiesenwischer/NServiceBus.EndpointHealth/commit/d2b475c549aa187e79a9d21fa76abab29abbe120))
-* run periodic HealthPing loop from FeatureStartupTask, drop HostedService ([be4ce24](https://github.com/Wiesenwischer/NServiceBus.EndpointHealth/commit/be4ce24391e3db7f66d86e347cc7629ecf01615c))
-* **tests:** host EndpointHealth integration tests so BackgroundService runs ([f898464](https://github.com/Wiesenwischer/NServiceBus.EndpointHealth/commit/f89846415e7cc885e363fd3a20a21c4664d3a69b))
-
 ## [0.2.1](https://github.com/Wiesenwischer/NServiceBus.EndpointHealth/compare/v0.2.0...v0.2.1) (2025-12-16)
 
 
