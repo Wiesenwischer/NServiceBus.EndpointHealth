@@ -108,8 +108,7 @@ internal class HealthPingStartupTask : FeatureStartupTask
 
         // Register initial state so we're healthy from the start
         _state.RegisterHealthPingProcessed();
-        _logger.LogInformation("EndpointHealth initialized. InstanceId={InstanceId}. Interval={Interval}.",
-            _state.InstanceId, _options.PingInterval);
+        _logger.LogInformation("EndpointHealth initialized. Interval={Interval}.", _options.PingInterval);
 
         _cts = new CancellationTokenSource();
         _pingLoop = Task.Run(() => SendPingsAsync(session, _cts.Token));
@@ -130,8 +129,8 @@ internal class HealthPingStartupTask : FeatureStartupTask
             {
                 var sendOptions = new SendOptions();
                 sendOptions.RouteToThisEndpoint();
-                await session.Send(new HealthPing { InstanceId = _state.InstanceId }, sendOptions, ct);
-                _logger.LogInformation("HealthPing sent. InstanceId={InstanceId}", _state.InstanceId);
+                await session.Send(new HealthPing(), sendOptions, ct);
+                _logger.LogInformation("HealthPing sent.");
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
@@ -182,7 +181,7 @@ internal class HealthPingStartupTask : FeatureStartupTask
             {
                 var sendOptions = new SendOptions();
                 sendOptions.RouteToThisEndpoint();
-                await session.Send(new HealthPing { InstanceId = _state.InstanceId }, sendOptions);
+                await session.Send(new HealthPing(), sendOptions);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {

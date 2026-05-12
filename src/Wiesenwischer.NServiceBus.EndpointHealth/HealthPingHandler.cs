@@ -5,9 +5,13 @@ using NServiceBus;
 namespace Wiesenwischer.NServiceBus.EndpointHealth;
 
 /// <summary>
-/// Handles <see cref="HealthPing"/> messages by registering the ping with the health state
-/// and scheduling the next health ping.
+/// Handles <see cref="HealthPing"/> messages by registering the ping with the health state.
 /// </summary>
+/// <remarks>
+/// The <see cref="HealthSignalBehavior"/> already updates the timestamp for every incoming message
+/// before this handler runs, so this handler is mainly here to log ping receipts and to mark
+/// <see cref="HealthPing"/> as a known handled message type.
+/// </remarks>
 public class HealthPingHandler : IHandleMessages<HealthPing>
 {
     private readonly IEndpointHealthState _state;
@@ -31,26 +35,14 @@ public class HealthPingHandler : IHandleMessages<HealthPing>
     }
 
     /// <summary>
-    /// Handles the health ping message by registering it was processed and scheduling the next ping.
-    /// Stale pings from previous container instances are silently dropped without rescheduling.
+    /// Handles the health ping message.
     /// </summary>
     public Task Handle(HealthPing message, IMessageHandlerContext context)
     {
-        var messageId = context.MessageId;
-        _logger.LogInformation("HealthPing received. MessageId={MessageId}, TransportKey={TransportKey}, MessageInstanceId={MessageInstanceId}, StateInstanceId={StateInstanceId}",
-            messageId, _state.TransportKey, message.InstanceId, _state.InstanceId);
-
-        if (message.InstanceId != _state.InstanceId)
-        {
-            _logger.LogWarning(
-                "Dropping stale HealthPing from instance {StaleId}, current instance is {CurrentId}. MessageId={MessageId}",
-                message.InstanceId, _state.InstanceId, messageId);
-            return Task.CompletedTask;
-        }
+        _logger.LogInformation("HealthPing received. MessageId={MessageId}, TransportKey={TransportKey}",
+            context.MessageId, _state.TransportKey);
 
         _state.RegisterHealthPingProcessed();
-        _logger.LogInformation("HealthPing processed. LastPing={LastPing}, MessageId={MessageId}",
-            _state.LastHealthPingProcessedUtc, messageId);
         return Task.CompletedTask;
     }
 }

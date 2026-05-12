@@ -8,9 +8,4 @@ namespace Wiesenwischer.NServiceBus.EndpointHealth;
 /// </summary>
 public class HealthPing : IMessage
 {
-    /// <summary>
-    /// Gets or sets the unique ID of the endpoint instance that started this ping chain.
-    /// Used to detect and discard stale pings from previous container runs.
-    /// </summary>
-    public Guid InstanceId { get; set; }
 }

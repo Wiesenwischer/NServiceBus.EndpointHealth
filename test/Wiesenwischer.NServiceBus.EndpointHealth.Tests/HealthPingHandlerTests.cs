@@ -38,25 +38,4 @@ public class HealthPingHandlerTests
         context.SentMessages.Should().BeEmpty();
     }
 
-    [Fact]
-    public async Task Handle_DropsStaleInstancePing()
-    {
-        // Arrange — message carries a different InstanceId than the current endpoint instance
-        var currentInstanceId = Guid.NewGuid();
-        var staleInstanceId = Guid.NewGuid();
-
-        var state = new Mock<IEndpointHealthState>();
-        state.Setup(s => s.InstanceId).Returns(currentInstanceId);
-
-        var options = new EndpointHealthOptions { PingInterval = TimeSpan.FromSeconds(30) };
-        var handler = new HealthPingHandler(state.Object, options);
-        var context = new TestableMessageHandlerContext();
-
-        // Act
-        await handler.Handle(new HealthPing { InstanceId = staleInstanceId }, context);
-
-        // Assert — stale ping is silently dropped: no state update
-        context.SentMessages.Should().BeEmpty();
-        state.Verify(s => s.RegisterHealthPingProcessed(), Times.Never);
-    }
 }

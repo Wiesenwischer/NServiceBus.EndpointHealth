@@ -129,39 +129,7 @@ This self-contained approach means:
 
 ## Container Restart Safety
 
-When running in containers (Docker, Kubernetes), endpoints restart frequently. Without protection, each restart would leave stale delayed pings in the transport — when those pings are eventually dispatched, they would each spawn a new ping chain, causing **exponential accumulation** over time (e.g. 1000+ active chains after many restarts).
-
-### The Problem
-
-```
-Container restart #1 → sends HealthPing → schedules next in 60s
-Container restart #2 → sends HealthPing → schedules next in 60s
-                                          ↑ old ping from #1 also arrives → new chain
-Container restart #3 → ...               ↑ old pings from #1 and #2 also arrive → N chains
-```
-
-After N restarts: **N active ping chains**, each producing load and noise.
-
-### The Solution: InstanceId
-
-Each `EndpointHealthState` generates a fresh `Guid` on startup (`InstanceId`). Every `HealthPing` carries this ID:
-
-```
-Container restart → new InstanceId=Y generated
-Old pings (InstanceId=X) arrive → handler: X ≠ Y → silently dropped, no reschedule
-New ping  (InstanceId=Y) arrives → handler: Y = Y → processed → next ping scheduled with Y
-```
-
-Old ping chains die naturally within one `PingInterval` (default: 60s). After that, exactly one active chain per endpoint instance remains — regardless of how many restarts occurred.
-
-### Result
-
-| Scenario | Behavior |
-|----------|----------|
-| Normal operation | 1 ping chain, processes every PingInterval |
-| Container restart | Old chains drop within 1 PingInterval |
-| Many rapid restarts | Old chains all drop within 1 PingInterval |
-| Scale-out (multiple replicas) | Each replica has its own InstanceId and chain |
+When running in containers (Docker, Kubernetes), endpoints restart frequently. The periodic ping loop is owned by the endpoint's `FeatureStartupTask`: it starts in `OnStart` and is cancelled in `OnStop`, so it only exists while the current instance is alive. There is no self-perpetuating ping chain that could leak across restarts. Stale pings left over in the input queue from a previous instance are simply processed as normal messages — and since the pipeline behavior treats any processed message as a health signal, they count toward proving the pump is alive. Each instance has exactly one loop, so there is no accumulation regardless of how many restarts occurred.
 
 ## Summary
 
@@ -170,6 +138,6 @@ NServiceBus EndpointHealth provides **true end-to-end health verification** by:
 1. **Testing the actual message path** - not just checking if the process is alive
 2. **Using timing thresholds** - allowing you to define acceptable latency
 3. **Capturing critical errors immediately** - for fast failure detection
-4. **Container-safe design** - InstanceId prevents ping chain accumulation across restarts
+4. **Treating any processed message as a health signal** - so a backlogged input queue cannot trigger a false stuck-pump alarm
 
 This approach ensures your container orchestrator (Kubernetes, etc.) knows when an endpoint genuinely cannot process messages, enabling proper failover and recovery.

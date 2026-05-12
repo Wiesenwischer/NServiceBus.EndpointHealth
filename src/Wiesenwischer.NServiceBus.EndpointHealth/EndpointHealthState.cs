@@ -29,9 +29,6 @@ public class EndpointHealthState : IEndpointHealthState
     }
 
     /// <inheritdoc />
-    public Guid InstanceId { get; } = Guid.NewGuid();
-
-    /// <inheritdoc />
     public string? TransportKey { get; }
 
     /// <inheritdoc />
