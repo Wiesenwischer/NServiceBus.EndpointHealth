@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0](https://github.com/Wiesenwischer/NServiceBus.EndpointHealth/compare/v0.3.0...v0.4.0) (2026-05-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* removes IEndpointHealthState.InstanceId and HealthPing.InstanceId.
+
+### Code Refactoring
+
+* drop obsolete InstanceId stale-ping check ([9e15fa6](https://github.com/Wiesenwischer/NServiceBus.EndpointHealth/commit/9e15fa62fb8d8ab4240e7ea0cb09978beb8d9691))
+
 ## [0.3.0](https://github.com/Wiesenwischer/NServiceBus.EndpointHealth/compare/v0.2.1...v0.3.0) (2026-05-11)
 
 
